@@ -1,0 +1,593 @@
+"""CLI for `agy-route`.
+
+A Typer app that wraps `agy --print` with:
+  - per-type tool policies (inlined as part of the prompt; the
+    `search` policy lives in <repo>/config/policies/search.md)
+  - model auto-resolution from `agy models`, cached 60 minutes
+  - stable exit codes: 0 · 2 · 3 · 10 (quota) · 11 (auth) · 12 (timeout) ·
+    13 (agy-missing) · 14 (model-unavailable) · 15 (permission-denied)
+  - optional `--json` envelope on stdout
+
+Compared to the v0.1.0-initial bash version (`agy-bridge`), this Typer
+rewrite:
+  - keeps the same flag surface (positional prompt + `--type/--json/...`)
+  - uses Typer's auto `--help` and exit code handling
+  - leaves the bash-shaped `agy-bridge --type search -- "q"` callers
+    compatible via `python -m agy_route ...` shells
+"""
+from __future__ import annotations
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+from dataclasses import dataclass
+from importlib import resources
+from pathlib import Path
+from typing import Optional
+
+import typer
+
+# Exit codes — kept stable for callers scripting around the wrapper.
+EXIT_OK = 0
+EXIT_FAILED = 2
+EXIT_EMPTY = 3
+EXIT_QUOTA = 10
+EXIT_AUTH = 11
+EXIT_TIMEOUT = 12
+EXIT_AGY_MISSING = 13
+EXIT_MODEL_UNAVAILABLE = 14
+EXIT_PERMISSION_DENIED = 15
+
+# Type-name → policy file path inside the agy_route package.
+# The repo also keeps `config/policies/<name>.md` at the top level for human
+# inspection; the canonical copy ships with the wheel and is loaded here.
+_POLICY_FILES = {
+    "search": "search.md",
+}
+
+
+def _find_policy(name: str) -> str:
+    rel = _POLICY_FILES.get(name)
+    if rel is None:
+        raise FileNotFoundError(
+            f"unknown type {name!r}; supported: {sorted(_POLICY_FILES)}"
+        )
+    try:
+        return (
+            resources.files("agy_route.policies").joinpath(rel).read_text()
+        )
+    except (FileNotFoundError, OSError) as e:
+        raise FileNotFoundError(
+            f"policy file not found for type {name!r} (looked in agy_route.policies/{rel})"
+        ) from e
+
+
+# ---------- Model resolution cache --------------------------------------------
+
+_MODEL_CACHE = Path(
+    os.environ.get("AGY_ROUTE_MODEL_CACHE")
+    or (Path.home() / ".cache" / "agy-route-models")
+)
+_MODEL_CACHE_TTL_SEC = 3600
+
+
+@dataclass
+class ResolvedModel:
+    name: str
+    from_cache: bool
+
+
+def _resolve_model(agy_models_output: str, type_name: str) -> Optional[str]:
+    """Pick the best Flash model from the `agy models` listing.
+
+    Preference order:
+      - Flash (High)   — preferred for web search (cheap, fast, grounded)
+      - Flash (Medium) — fallback
+      - Flash (Low)    — last resort
+      - any line containing 'flash' (case insensitive)
+    """
+    lines = [ln.strip() for ln in agy_models_output.splitlines() if ln.strip()]
+    rank = (
+        ("high", 3),
+        ("medium", 2),
+        ("low", 1),
+    )
+    best: tuple[int, str] | None = None
+    for line in lines:
+        ll = line.lower()
+        if "flash" not in ll:
+            continue
+        # match "flash-high", "flash (high)", "flash-high-..."
+        for tag, score in rank:
+            if re.search(rf"flash[ _-]?{tag}", ll):
+                if best is None or score > best[0]:
+                    best = (score, line)
+                break
+    if best is not None:
+        return best[1]
+    # last resort
+    for line in lines:
+        if "flash" in line.lower():
+            return line
+    return None
+
+
+def _read_cache(type_name: str) -> Optional[str]:
+    if not _MODEL_CACHE.is_file():
+        return None
+    try:
+        age = time.time() - _MODEL_CACHE.stat().st_mtime
+        if age >= _MODEL_CACHE_TTL_SEC:
+            return None
+    except OSError:
+        return None
+    try:
+        for ln in _MODEL_CACHE.read_text().splitlines():
+            ts, cached_type, name = ln.split("\t", 2)
+            if cached_type == type_name:
+                return name
+    except (ValueError, OSError):
+        return None
+    return None
+
+
+def _write_cache(type_name: str, name: str) -> None:
+    try:
+        _MODEL_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        existing_lines: list[str] = []
+        if _MODEL_CACHE.is_file():
+            for ln in _MODEL_CACHE.read_text().splitlines():
+                parts = ln.split("\t", 2)
+                if len(parts) == 3 and parts[1] != type_name:
+                    existing_lines.append(ln)
+        existing_lines.append(f"{int(time.time())}\t{type_name}\t{name}")
+        _MODEL_CACHE.write_text("\n".join(existing_lines) + "\n")
+    except OSError:
+        pass  # cache is best-effort
+
+
+def resolve_model(type_name: str, override: Optional[str]) -> ResolvedModel:
+    if override:
+        return ResolvedModel(name=override, from_cache=False)
+    cached = _read_cache(type_name)
+    if cached:
+        return ResolvedModel(name=cached, from_cache=True)
+    try:
+        agy_models = subprocess.run(
+            ["agy", "models"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        ).stdout
+    except (FileNotFoundError, subprocess.SubprocessError, subprocess.TimeoutExpired):
+        return ResolvedModel(name="", from_cache=False)
+    name = _resolve_model(agy_models, type_name)
+    if not name:
+        return ResolvedModel(name="", from_cache=False)
+    _write_cache(type_name, name)
+    return ResolvedModel(name=name, from_cache=False)
+
+
+# ---------- agy invocation ----------------------------------------------------
+
+
+def _build_full_prompt(policy_text: str, user_prompt: str) -> str:
+    return (
+        "You are running with the following tool policy.\n\n"
+        "--- begin policy ---\n"
+        f"{policy_text}\n"
+        "--- end policy ---\n\n"
+        "Search the web now for the user's question below and answer with citations.\n\n"
+        f"User question: {user_prompt}"
+    )
+
+
+def _classify_empty(stderr: str) -> tuple[int, str]:
+    s = stderr.lower()
+    if re.search(r"quota|resource_exhausted|429", s):
+        return EXIT_QUOTA, "quota"
+    if re.search(r"unauthenticated|re-?auth|credentials", s):
+        return EXIT_AUTH, "auth"
+    return EXIT_EMPTY, "empty_output"
+
+
+def _invoke_agy(
+    full_prompt: str,
+    type_name: str,
+    *,
+    timeout_s: int,
+    pass_model: Optional[str],
+) -> tuple[int, str, str]:
+    """Run `agy --print` with the inlined prompt.
+
+    Returns (exit_code, stdout, stderr).
+    """
+    agy_args: list[str] = ["agy", "--print"]
+    if pass_model:
+        # Empirical quirk (verified on agy 1.1.1): passing `--model` causes
+        # the model to answer about the flag itself instead of the prompt.
+        # Off by default; turn on with $AGY_ROUTE_FORCE_MODEL=1.
+        agy_args += ["--model", pass_model]
+    if os.environ.get("AGY_SKIP_PERMISSIONS"):
+        agy_args.append("--dangerously-skip-permissions")
+    agy_args.append(full_prompt)
+
+    try:
+        completed = subprocess.run(
+            agy_args,
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+        )
+    except FileNotFoundError:
+        return EXIT_AGY_MISSING, "", "agy binary not found on PATH"
+    except subprocess.TimeoutExpired:
+        return EXIT_TIMEOUT, "", f"timeout after {timeout_s}s"
+
+    code = completed.returncode
+    if code == 124:  # coreutils `timeout` when it had to kill
+        return EXIT_TIMEOUT, completed.stdout, completed.stderr
+    return code, completed.stdout, completed.stderr
+
+
+# ---------- JSON envelope -----------------------------------------------------
+
+
+def _emit_json_envelope(
+    *,
+    success: bool,
+    type_name: str,
+    model: str,
+    duration_s: int,
+    response: str,
+    error_class: Optional[str] = None,
+) -> None:
+    payload: dict[str, object] = {
+        "success": success,
+        "type": type_name,
+        "model_used": model,
+        "duration_seconds": duration_s,
+    }
+    if success:
+        payload["response"] = response
+    else:
+        payload["error_class"] = error_class or "failed"
+        payload["error"] = response
+    json.dump(payload, sys.stdout, ensure_ascii=False)
+    sys.stdout.write("\n")
+
+
+# ---------- The Typer app -----------------------------------------------------
+
+app = typer.Typer(
+    name="agy-route",
+    help="Typed, policy-gated proxy in front of the `agy` CLI.",
+    no_args_is_help=True,
+    add_completion=False,
+)
+
+
+@app.command("types")
+def types_cmd() -> None:
+    """Print the supported (type, model, timeout) table and exit."""
+    typer.echo(
+        "type     | model                        | timeout | capability\n"
+        "---------|------------------------------|---------|---------------------------\n"
+        "search   | gemini-*-flash-high (latest) | 300s    | web search only"
+    )
+    raise typer.Exit(EXIT_OK)
+
+
+@app.command("search")
+def search_cmd(
+    prompt: Optional[str] = typer.Argument(
+        None,
+        show_default=False,
+        help="Search query. If omitted, the prompt is read from stdin "
+        "(with a 30s timeout by default).",
+    ),
+    timeout: int = typer.Option(
+        300,
+        "--timeout",
+        help="Max wall time (seconds) for the underlying agy call.",
+    ),
+    stdin_timeout: int = typer.Option(
+        30,
+        "--stdin-timeout",
+        help="Max seconds to wait for a prompt from stdin.",
+    ),
+    model: Optional[str] = typer.Option(
+        None,
+        "--model",
+        help="Override the auto-selected model. Exact name from `agy models`.",
+    ),
+    log_file: Optional[Path] = typer.Option(
+        None,
+        "--log-file",
+        help="Append agy's stderr + result metadata here.",
+    ),
+    as_json: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit a JSON envelope on stdout.",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        help="Print progress on stderr.",
+    ),
+) -> None:
+    """Run a web search via agy (search-only tool policy)."""
+    type_name = "search"
+    _run(
+        type_name=type_name,
+        prompt=prompt,
+        timeout=timeout,
+        stdin_timeout=stdin_timeout,
+        model=model,
+        log_file=log_file,
+        as_json=as_json,
+        verbose=verbose,
+    )
+
+
+# ---------- The shared run path -----------------------------------------------
+
+
+def _run(
+    *,
+    type_name: str,
+    prompt: Optional[str],
+    timeout: int,
+    stdin_timeout: int,
+    model: Optional[str],
+    log_file: Optional[Path],
+    as_json: bool,
+    verbose: bool,
+) -> None:
+    def log(msg: str) -> None:
+        if verbose:
+            typer.echo(f"[agy-route] {msg}", err=True)
+
+    if not shutil.which("agy"):
+        _fail(
+            type_name=type_name,
+            model="",
+            as_json=as_json,
+            exit_code=EXIT_AGY_MISSING,
+            error_class="agy-missing",
+            message="agy binary not found on PATH "
+            "(install from https://antigravity.google/docs/cli-using)",
+            stderr="",
+            duration_s=0,
+            log_file=log_file,
+        )
+        return
+
+    # Acquire prompt.
+    if prompt is None:
+        if sys.stdin.isatty():
+            _fail(
+                type_name=type_name,
+                model="",
+                as_json=as_json,
+                exit_code=EXIT_FAILED,
+                error_class="failed",
+                message="no prompt provided (pass it as the first arg or pipe via stdin)",
+                stderr="",
+                duration_s=0,
+                log_file=log_file,
+            )
+            return
+        try:
+            prompt = _read_stdin(stdin_timeout)
+        except TimeoutError:
+            _fail(
+                type_name=type_name,
+                model="",
+                as_json=as_json,
+                exit_code=EXIT_FAILED,
+                error_class="failed",
+                message=f"stdin empty or timed out after {stdin_timeout}s",
+                stderr="",
+                duration_s=0,
+                log_file=log_file,
+            )
+            return
+    if not prompt.strip():
+        _fail(
+            type_name=type_name,
+            model="",
+            as_json=as_json,
+            exit_code=EXIT_FAILED,
+            error_class="failed",
+            message="prompt is empty",
+            stderr="",
+            duration_s=0,
+            log_file=log_file,
+        )
+        return
+    if len(prompt) > 200_000:
+        _fail(
+            type_name=type_name,
+            model="",
+            as_json=as_json,
+            exit_code=EXIT_FAILED,
+            error_class="failed",
+            message=f"prompt is {len(prompt)} chars (>200k); refusing to send",
+            stderr="",
+            duration_s=0,
+            log_file=log_file,
+        )
+        return
+
+    # Resolve the model.
+    if model:
+        resolved = ResolvedModel(name=model, from_cache=False)
+    else:
+        resolved = resolve_model(type_name, override=None)
+        if not resolved.name:
+            _fail(
+                type_name=type_name,
+                model="",
+                as_json=as_json,
+                exit_code=EXIT_MODEL_UNAVAILABLE,
+                error_class="model-unavailable",
+                message="no usable model resolved from `agy models`; "
+                "pass --model to override",
+                stderr="",
+                duration_s=0,
+                log_file=log_file,
+            )
+            return
+    log(f"type={type_name} model={resolved.name} timeout={timeout}s")
+
+    # Find + inline the policy.
+    try:
+        policy_text = _find_policy(type_name)
+    except FileNotFoundError as e:
+        _fail(
+            type_name=type_name,
+            model=resolved.name,
+            as_json=as_json,
+            exit_code=EXIT_FAILED,
+            error_class="failed",
+            message=str(e),
+            stderr="",
+            duration_s=0,
+            log_file=log_file,
+        )
+        return
+    full_prompt = _build_full_prompt(policy_text, prompt)
+
+    # Invoke agy.
+    pass_model = (
+        resolved.name if (resolved.name and os.environ.get("AGY_ROUTE_FORCE_MODEL"))
+        else None
+    )
+    start = time.monotonic()
+    code, stdout, stderr = _invoke_agy(
+        full_prompt,
+        type_name,
+        timeout_s=timeout,
+        pass_model=pass_model,
+    )
+    duration_s = int(time.monotonic() - start)
+
+    # Classify failures.
+    error_class: Optional[str] = None
+    if code != 0:
+        error_class = {
+            13: "agy-missing",
+            14: "model-unavailable",
+            15: "permission-denied",
+        }.get(code, "failed")
+        if code == EXIT_TIMEOUT:
+            pass  # already mapped
+    elif not stdout:
+        rc, ec = _classify_empty(stderr)
+        code = rc
+        error_class = ec
+
+    if code != 0:
+        _fail(
+            type_name=type_name,
+            model=resolved.name,
+            as_json=as_json,
+            exit_code=code,
+            error_class=error_class or "failed",
+            message=(stderr or error_class or "unknown error")[:4000],
+            stderr=stderr,
+            duration_s=duration_s,
+            log_file=log_file,
+        )
+        return
+
+    if as_json:
+        _emit_json_envelope(
+            success=True,
+            type_name=type_name,
+            model=resolved.name,
+            duration_s=duration_s,
+            response=stdout,
+        )
+    else:
+        sys.stdout.write(stdout)
+        if not stdout.endswith("\n"):
+            sys.stdout.write("\n")
+
+    _maybe_log(log_file, type_name, resolved.name, stdout, stderr, code, duration_s)
+
+
+def _read_stdin(timeout_s: int) -> str:
+    """Read stdin with a soft timeout. Raises TimeoutError on timeout."""
+    # Use select on POSIX; on Windows we'd need msvcrt, but we only run on
+    # Linux/macOS per the project's testing surface.
+    import select
+
+    readable, _, _ = select.select([sys.stdin], [], [], timeout_s)
+    if not readable:
+        raise TimeoutError("stdin read timed out")
+    return sys.stdin.read()
+
+
+def _fail(
+    *,
+    type_name: str,
+    model: str,
+    as_json: bool,
+    exit_code: int,
+    error_class: str,
+    message: str,
+    stderr: str,
+    duration_s: int,
+    log_file: Optional[Path],
+) -> None:
+    if as_json:
+        _emit_json_envelope(
+            success=False,
+            type_name=type_name,
+            model=model,
+            duration_s=duration_s,
+            response=message,
+            error_class=error_class,
+        )
+    else:
+        typer.echo(f"agy-route: {error_class} (exit {exit_code}): {message}", err=True)
+    _maybe_log(log_file, type_name, model, "", stderr, exit_code, duration_s)
+    raise typer.Exit(exit_code)
+
+
+def _maybe_log(
+    log_file: Optional[Path],
+    type_name: str,
+    model: str,
+    stdout: str,
+    stderr: str,
+    exit_code: int,
+    duration_s: int,
+) -> None:
+    if not log_file:
+        return
+    try:
+        with log_file.open("a") as fh:
+            fh.write(
+                f"--- agy-route run @ {time.strftime('%Y-%m-%dT%H:%M:%S%z')} "
+                f"(type={type_name} model={model} exit={exit_code} duration={duration_s}s) ---\n"
+                f"stdout:\n{stdout}\nstderr:\n{stderr}\n"
+            )
+    except OSError:
+        pass
+
+
+def main() -> None:
+    app()
+
+
+if __name__ == "__main__":  # pragma: no cover
+    main()
