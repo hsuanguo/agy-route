@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "agy-harness",
+  "description": "Harness Claude Code with the agy (Google Antigravity) CLI: grounded web search, delegated review, deep research.",
+  "owner": {
+    "name": "agy-harness contributors"
+  },
+  "plugins": [
+    {
+      "name": "agy-web-search",
+      "description": "Route Claude Code web searches through the agy CLI. Drop-in replacement for the built-in WebSearch tool, with grounded citations from Gemini.",
+      "source": "./",
+      "category": "search",
+      "keywords": ["agy", "antigravity", "gemini", "web-search", "grounded-search"]
+    }
+  ]
+}
