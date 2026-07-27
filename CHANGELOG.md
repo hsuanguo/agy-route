@@ -10,21 +10,28 @@ First release of the `agy-web-search` plugin.
   web-search-shaped request when the skill is active.
 - `commands/agy-search.md` — `/agy-search "<query>"` slash command for
   explicit one-shot searches.
-- `scripts/agy_bridge.sh` — typed bridge around `agy --print`:
-  - `--type search` only (v0.1.0).
+- `pyproject.toml` — PEP 621 metadata; declares `agy-route` as a console
+  script entry point. Installable with `uv tool install
+  git+https://github.com/hsuanguo/agy-harness`.
+- `src/agy_route/cli.py` — Typer app, the `agy-route` wrapper:
+  - `agy-route search "<query>"` (v0.1.0; `--type search` only).
   - Tool policy inlined as part of the prompt (search-web only).
-  - Prompt inlined as a single positional arg (off `argv`'s implicit
-    visibility on most systems). `AGY_BRIDGE_DOTEMD=1` switches to a 0600
-    temp file for callers that want extra isolation.
   - Model auto-resolved from `agy models`, cached 60 min
-    at `~/.cache/agy-bridge-models`; reported in the JSON envelope.
-    `AGY_BRIDGE_FORCE_MODEL=1` opts into passing `--model` to `agy`.
+    at `~/.cache/agy-route-models`; reported in the JSON envelope.
+    `AGY_ROUTE_FORCE_MODEL=1` opts into passing `--model` to `agy`.
   - Stable exit codes: 0 · 2 · 3 · 10 (quota) · 11 (auth) · 12 (timeout) ·
     13 (agy-missing) · 14 (model-unavailable) · 15 (permission-denied).
   - `--json` envelope: `success`, `type`, `model_used`, `duration_seconds`,
     `response` / `error_class` / `error`.
   - Verified end-to-end against `agy 1.1.1`: real `search_web` calls,
-    real URLs in the response (Tokyo population, SF weather, Paris).
+    real URLs in the response (Tokyo population, SF weather, Paris,
+    Anthropic CEO).
+
+**Naming history**
+- v0.1.0 went out under `agy-bridge` + bash (`scripts/agy_bridge.sh`).
+- Renamed to `agy-route` (Typer + Python) in the same v0.1.0 line —
+  the upstream commit replacing the bash wrapper has not been tagged
+  with a new version; the source-of-truth is `main`.
 - `scripts/install.sh` — pinned wrapper installer; idempotent; backs up
   any pre-existing shim at `~/.local/bin/agy-bridge`.
 - `scripts/uninstall.sh` — reverses the install; refuses to delete files
