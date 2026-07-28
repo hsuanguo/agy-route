@@ -5,7 +5,7 @@ description = "Typed, policy-gated proxy in front of the agy (Google Antigravity
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "agy-harness contributors" }]
+authors = [{ name = "agy-route contributors" }]
 keywords = [
     "agy", "antigravity", "gemini", "web-search", "grounded-search",
     "claude-code-plugin", "typer",
@@ -15,8 +15,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/hsuanguo/agy-harness"
-Repository = "https://github.com/hsuanguo/agy-harness"
+Homepage = "https://github.com/hsuanguo/agy-route"
+Repository = "https://github.com/hsuanguo/agy-route"
 
 [project.scripts]
 agy-route = "agy_route.cli:main"

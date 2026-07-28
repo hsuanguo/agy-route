@@ -1,11 +1,11 @@
-# agy-harness — `agy-web-search` plugin
+# agy-route — `agy-web-search` plugin
 
 A Claude Code plugin that **routes web searches through the `agy` CLI** (Google
 Antigravity CLI — Gemini under the hood). When this plugin is enabled, Claude
 uses `agy`'s grounded web search with real source citations instead of its
 built-in `WebSearch` / `web_search` tool.
 
-This is the first plugin in the [`agy-harness`](.) repo. Future plugins will
+This is the first plugin in the [`agy-route`](.) repo. Future plugins will
 delegate review, code, and deep-research tasks the same way.
 
 ## What you get
@@ -30,17 +30,17 @@ No MCP server required. Skills + commands + a thin Python wrapper only.
 2. **Install `agy-route` as a uv tool.** This puts it on `$PATH` under
    `$HOME/.local/bin`:
    ```
-   uv tool install git+https://github.com/hsuanguo/agy-harness
+   uv tool install git+https://github.com/hsuanguo/agy-route
    ```
-   (Or from a local checkout: `uv tool install /path/to/agy-harness`.)
+   (Or from a local checkout: `uv tool install /path/to/agy-route`.)
 3. **Add the plugin from this repo.** From Claude Code:
    ```
-   /plugin marketplace add https://github.com/hsuanguo/agy-harness
+   /plugin marketplace add https://github.com/hsuanguo/agy-route
    /plugin install agy-web-search
    ```
    Or install directly from a local checkout:
    ```
-   /plugin install /path/to/agy-harness
+   /plugin install /path/to/agy-route
    ```
 4. **Verify.**
    ```
@@ -76,7 +76,7 @@ echo "query" | agy-route search --json
 ### Re-install after a `git pull`
 
 ```
-uv tool install --force --from git+https://github.com/hsuanguo/agy-harness agy-route
+uv tool install --force --from git+https://github.com/hsuanguo/agy-route agy-route
 ```
 
 ## Exit codes

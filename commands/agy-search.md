@@ -17,4 +17,4 @@ agy-route search "$ARGUMENTS"
 
 Return the full response **including all source URLs verbatim**. Do not paraphrase citations, do not drop dates, do not summarize URLs as "various sources" — the user asked for a search, give them the search result.
 
-If `agy-route` is not on `$PATH`, install it once with `uv tool install git+https://github.com/hsuanguo/agy-harness`, then retry.
+If `agy-route` is not on `$PATH`, install it once with `uv tool install git+https://github.com/hsuanguo/agy-route`, then retry.

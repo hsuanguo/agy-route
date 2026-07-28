@@ -20,7 +20,7 @@ Do **not** use it for stable, parametric knowledge (programming language syntax,
 
 ## How to call it
 
-The wrapper `agy-route` is installed via `uv tool install git+https://github.com/hsuanguo/agy-harness` once per machine. It wraps `agy --print` with a search-only tool policy and a Gemini prompt prefix that forces a real `search_web` call.
+The wrapper `agy-route` is installed via `uv tool install git+https://github.com/hsuanguo/agy-route` once per machine. It wraps `agy --print` with a search-only tool policy and a Gemini prompt prefix that forces a real `search_web` call.
 
 ```bash
 # One-shot inline
@@ -35,7 +35,7 @@ echo "query" | agy-route search --json
 #    "duration_seconds":9,"response":"...citations..."}
 ```
 
-If `agy-route` is not on `$PATH`, tell the user to run `uv tool install git+https://github.com/hsuanguo/agy-harness` once. Until then, fall back to Claude's built-in `WebSearch` tool — never call raw `agy` (you'll lose type routing, tool policy, and exit-code normalization).
+If `agy-route` is not on `$PATH`, tell the user to run `uv tool install git+https://github.com/hsuanguo/agy-route` once. Until then, fall back to Claude's built-in `WebSearch` tool — never call raw `agy` (you'll lose type routing, tool policy, and exit-code normalization).
 
 ## Result format
 
@@ -51,7 +51,7 @@ Defaults to the latest `gemini-*-flash-high` resolved from `agy models` (cached 
 
 | Symptom | Fix |
 |---|---|
-| `agy-route: command not found` | Wrapper not installed — `uv tool install git+https://github.com/hsuanguo/agy-harness`. Until fixed, fall back to built-in WebSearch. |
+| `agy-route: command not found` | Wrapper not installed — `uv tool install git+https://github.com/hsuanguo/agy-route`. Until fixed, fall back to built-in WebSearch. |
 | Response has no source URLs | The model skipped the search — re-run; the search-only policy forces `search_web`. |
 | `Exit 124` (timeout) | Default 300 s; pass `--timeout 600` for slower queries. |
 | `Exit 13` (`agy-missing`) | `agy` not on PATH — install it (https://antigravity.google/docs/cli-using). |

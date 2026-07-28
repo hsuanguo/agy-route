@@ -1,9 +1,9 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "agy-harness",
+  "name": "agy-route",
   "description": "Harness Claude Code with the agy (Google Antigravity) CLI: grounded web search, delegated review, deep research.",
   "owner": {
-    "name": "agy-harness contributors"
+    "name": "agy-route contributors"
   },
   "plugins": [
     {
