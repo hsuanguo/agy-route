@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "agy-route-hook-pretooluse",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

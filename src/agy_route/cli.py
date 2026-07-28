@@ -283,6 +283,119 @@ def types_cmd() -> None:
     raise typer.Exit(EXIT_OK)
 
 
+@app.command("targets")
+def targets_cmd() -> None:
+    """List supported install targets (Claude Code, opencode, …)."""
+    from agy_route.targets import all_targets
+
+    rows = []
+    for t in all_targets():
+        present = "yes" if t.is_present() else "no"
+        rows.append(
+            f"{t.name:<8} | {t.description}\n"
+            f"         | config_dir = {t.config_dir}\n"
+            f"         | hook_config = {t.hook_config_path} ({t.hook_config_format})\n"
+            f"         | present on host: {present}"
+        )
+    typer.echo("\n\n".join(rows))
+    raise typer.Exit(EXIT_OK)
+
+
+@app.command("install")
+def install_cmd(
+    target: str = typer.Option(
+        "claude",
+        "--target",
+        "-t",
+        help="Which agent to install for (claude, opencode, …). Run `agy-route targets` to list.",
+    ),
+    skill_only: bool = typer.Option(
+        False, "--skill-only", help="Install only the SKILL.md, not the hook."
+    ),
+    hook_only: bool = typer.Option(
+        False, "--hook-only", help="Install only the PreToolUse hook, not the skill."
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Don't touch the filesystem; just report what would change.",
+    ),
+) -> None:
+    """Install the SKILL.md and/or PreToolUse hook into the target agent."""
+    from agy_route import install as install_mod
+
+    if skill_only and hook_only:
+        typer.echo("agy-route install: --skill-only and --hook-only are mutually exclusive", err=True)
+        raise typer.Exit(EXIT_FAILED)
+
+    try:
+        result = install_mod.install(
+            target, skill_only=skill_only, hook_only=hook_only, dry_run=dry_run
+        )
+    except KeyError as e:
+        typer.echo(f"agy-route install: {e}", err=True)
+        raise typer.Exit(EXIT_FAILED) from None
+
+    if result.message:
+        typer.echo(f"agy-route install: {result.message}", err=True)
+        raise typer.Exit(EXIT_FAILED)
+
+    if dry_run:
+        typer.echo(
+            f"[dry-run] target={result.target} "
+            f"skill_installed={result.skill_installed} (changed={result.skill_changed}) "
+            f"hook_installed={result.hook_installed}"
+        )
+    else:
+        actions = []
+        if not hook_only and result.skill_path:
+            actions.append(f"skill → {result.skill_path}")
+        if not skill_only and result.hook_installed:
+            actions.append(f"hook → {target}")
+        if actions:
+            typer.echo("installed: " + "; ".join(actions))
+        else:
+            typer.echo(f"nothing to install for target {target!r}")
+    raise typer.Exit(EXIT_OK)
+
+
+@app.command("uninstall")
+def uninstall_cmd(
+    target: str = typer.Option(
+        None,
+        "--target",
+        "-t",
+        help="Which agent to uninstall from. Omit to scan all registered targets.",
+    ),
+) -> None:
+    """Remove the SKILL.md and hook entries previously installed by `agy-route install`."""
+    from agy_route import install as install_mod
+
+    if target is None:
+        results = install_mod.uninstall_all()
+        any_removed = False
+        for name, (skill_removed, hook_removed) in results.items():
+            if skill_removed or hook_removed:
+                any_removed = True
+                typer.echo(
+                    f"{name}: removed skill={skill_removed} hook={hook_removed}"
+                )
+            else:
+                typer.echo(f"{name}: nothing to remove")
+        if not any_removed:
+            typer.echo("nothing to remove")
+    else:
+        try:
+            skill_removed, hook_removed = install_mod.uninstall(target)
+        except KeyError as e:
+            typer.echo(f"agy-route uninstall: {e}", err=True)
+            raise typer.Exit(EXIT_FAILED) from None
+        typer.echo(
+            f"{target}: removed skill={skill_removed} hook={hook_removed}"
+        )
+    raise typer.Exit(EXIT_OK)
+
+
 @app.command("search")
 def search_cmd(
     prompt: Optional[str] = typer.Argument(
