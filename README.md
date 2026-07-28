@@ -1,5 +1,12 @@
 # agy-route — `agy-web-search` plugin
 
+<p align="left">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo.svg">
+    <img alt="agy-route" src="assets/logo.svg" width="320">
+  </picture>
+</p>
+
 A Claude Code plugin that **routes web searches through the `agy` CLI** (Google
 Antigravity CLI — Gemini under the hood). When this plugin is enabled, Claude's
 built-in `WebSearch` tool is intercepted by a `PreToolUse` hook and rerouted to
@@ -163,6 +170,11 @@ The two paths don't conflict — uninstall each one you actually used.
 ## Layout
 
 ```
+assets/
+  logo.svg                    # horizontal lockup (icon + wordmark)
+  icon.svg                    # icon only (favicon / social-card)
+tools/
+  generate_logo.py            # regenerates assets/*.svg from the letterforms
 .claude-plugin/
   plugin.json                 # plugin manifest (skills + commands + hooks)
   marketplace.json            # marketplace entry (for /plugin marketplace add — opt-in)
@@ -187,6 +199,17 @@ src/agy_route/
     search.md                 # tool policy: search_web + read_url only
 pyproject.toml                # PEP 621 metadata + 2 console script entries
 ```
+
+## Logo
+
+`assets/logo.svg` is a horizontal lockup in the [act-cli](https://github.com/hsuanguo/act-cli/blob/main/assets/logo.svg)
+style: an icon (input bar → junction → two branches, the "split-route" idea)
+plus a pixel-block wordmark "agy-route". The fill flips black ↔ near-white
+via `prefers-color-scheme`. `assets/icon.svg` is the icon-only version
+(useful for favicons / social cards).
+
+Both files are derived from `tools/generate_logo.py` — tweak the
+`LETTERS` dict in that script and re-run to regenerate.
 
 ## Privacy
 
