@@ -1,34 +1,41 @@
 # agy-route — `agy-web-search` plugin
 
 A Claude Code plugin that **routes web searches through the `agy` CLI** (Google
-Antigravity CLI — Gemini under the hood). When this plugin is enabled, Claude
-uses `agy`'s grounded web search with real source citations instead of its
-built-in `WebSearch` / `web_search` tool.
+Antigravity CLI — Gemini under the hood). When this plugin is enabled, Claude's
+built-in `WebSearch` tool is intercepted by a `PreToolUse` hook and rerouted to
+`agy-route search`, which uses `agy`'s grounded web search with real source
+citations.
 
-This is the first plugin in the [`agy-route`](.) repo. Future plugins will
-delegate review, code, and deep-research tasks the same way.
+This is the first plugin in the [`agy-route`](.) repo. Future plugins (review,
+research, …) become subcommands of the same `agy-route` binary.
 
 ## What you get
 
-- A `agy-web-search` skill that triggers Claude to use agy for any
-  web-search-shaped request ("look up …", "latest …", "search for …", etc.).
-- A `/agy-search "<query>"` slash command for an explicit one-shot search.
-- The `agy-route` Python wrapper (`src/agy_route/cli.py`, distributed via `uv
-  tool install`) that:
+- **`PreToolUse` hook on `WebSearch`** — every Claude-initiated web search is
+  denied with a reason that tells the model to call `agy-route search` via the
+  Bash tool instead. Deterministic: Claude never needs to remember to prefer
+  `agy-route`.
+- A slim **`agy-web-search` skill** that documents `agy-route` for Claude —
+  useful when the hook is disabled, or when Claude wants to call `agy-route`
+  directly for queries that wouldn't trigger `WebSearch`.
+- A **`/agy-search "<query>"` slash command** for an explicit one-shot search.
+- The **`agy-route` Python wrapper** (`src/agy_route/cli.py`, distributed via
+  `uv tool install`) that:
   - locks the search down to a `search_web`-only tool policy,
   - auto-selects the latest `gemini-*-flash-high` from `agy models`,
   - classifies failures (`quota` · `auth` · `timeout` · `permission-denied` · …)
     with stable exit codes.
 
-No MCP server required. Skills + commands + a thin Python wrapper only.
+No MCP server required. Skills + commands + a thin Python wrapper + a Claude Code
+hook.
 
 ## Install
 
 1. **Install `agy` and authenticate.** See
    [Antigravity CLI docs](https://antigravity.google/docs/cli-using). Confirm with
    `agy models` (should list Gemini Flash / Pro entries).
-2. **Install `agy-route` as a uv tool.** This puts it on `$PATH` under
-   `$HOME/.local/bin`:
+2. **Install `agy-route` as a uv tool.** This puts both `agy-route` and the
+   hook binary `agy-route-hook-pretooluse` on `$PATH` under `$HOME/.local/bin`:
    ```
    uv tool install git+https://github.com/hsuanguo/agy-route
    ```
@@ -47,13 +54,16 @@ No MCP server required. Skills + commands + a thin Python wrapper only.
    agy-route types
    agy-route search "latest Antigravity CLI release"
    ```
+   The hook is wired automatically by Claude Code once the plugin is enabled.
+   You can confirm by asking Claude a question that would normally trigger a
+   web search; the response will cite Gemini-grounded URLs.
 
 ## Usage
 
 ### From Claude Code
 
-Once the plugin is enabled, Claude will route web searches through agy
-automatically. To force an explicit search:
+Once the plugin is enabled, **every `WebSearch` is automatically routed through
+`agy-route search`** by the hook. To force an explicit search:
 
 ```
 /agy-search "Claude API pricing June 2026"
@@ -111,19 +121,21 @@ uv tool uninstall agy-route
 
 ```
 .claude-plugin/
-  plugin.json                 # plugin manifest (name/version/skills/commands)
+  plugin.json                 # plugin manifest (skills + commands + hooks)
   marketplace.json            # marketplace entry (for /plugin marketplace add)
+hooks/
+  hooks.json                  # PreToolUse hook wiring (WebSearch → agy-route)
 commands/
   agy-search.md               # /agy-search <query> slash command
 skills/
-  agy-web-search/SKILL.md     # the routing skill
+  agy-web-search/SKILL.md     # reference skill (the hook does the routing)
 src/agy_route/
-  cli.py                      # the Typer app — `agy-route` entry point
-  __init__.py
-pyproject.toml                # PEP 621 metadata + console script entry
-config/
+  cli.py                      # the Typer app — `agy-route search` entry point
+  hooks/
+    pretooluse.py             # the hook binary — `agy-route-hook-pretooluse`
   policies/
     search.md                 # tool policy: search_web + read_url only
+pyproject.toml                # PEP 621 metadata + 2 console script entries
 ```
 
 ## Privacy

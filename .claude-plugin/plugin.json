@@ -21,5 +21,6 @@
   ],
   "commands": [
     "./commands/agy-search.md"
-  ]
+  ],
+  "hooks": "./hooks/hooks.json"
 }
