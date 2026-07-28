@@ -40,23 +40,32 @@ hook.
    uv tool install git+https://github.com/hsuanguo/agy-route
    ```
    (Or from a local checkout: `uv tool install /path/to/agy-route`.)
-3. **Add the plugin from this repo.** From Claude Code:
+3. **Drop the SKILL.md and hook into Claude Code.** Two equivalent paths:
+
+   **A. Plugin marketplace path** (managed — recommended for most users):
    ```
    /plugin marketplace add https://github.com/hsuanguo/agy-route
    /plugin install agy-web-search
    ```
-   Or install directly from a local checkout:
+
+   **B. `agy-route install` lite path** (no marketplace, drops into `~/.claude/`):
    ```
-   /plugin install /path/to/agy-route
+   agy-route install                # install SKILL.md + hook for Claude Code
+   agy-route install --skill-only   # just the SKILL.md
+   agy-route install --hook-only    # just the hook
+   agy-route install --dry-run      # show what would change, no filesystem writes
    ```
+   Targets other than `claude` (default) are opt-in via `--target`. Currently
+   registered: `claude`. Run `agy-route targets` for the live list.
+
 4. **Verify.**
    ```
    agy-route types
    agy-route search "latest Antigravity CLI release"
    ```
-   The hook is wired automatically by Claude Code once the plugin is enabled.
-   You can confirm by asking Claude a question that would normally trigger a
-   web search; the response will cite Gemini-grounded URLs.
+   The hook is wired automatically. You can confirm by asking Claude a
+   question that would normally trigger a web search; the response will cite
+   Gemini-grounded URLs.
 
 ## Usage
 
@@ -113,8 +122,10 @@ uv tool install --force --from git+https://github.com/hsuanguo/agy-route agy-rou
 ## Uninstall
 
 ```
+agy-route uninstall                # removes SKILL.md + hook for every registered target
+agy-route uninstall --target claude  # restrict to one target
 uv tool uninstall agy-route
-/plugin uninstall agy-web-search
+/plugin uninstall agy-web-search    # if you installed via the plugin path
 ```
 
 ## Layout
@@ -130,7 +141,14 @@ commands/
 skills/
   agy-web-search/SKILL.md     # reference skill (the hook does the routing)
 src/agy_route/
-  cli.py                      # the Typer app — `agy-route search` entry point
+  cli.py                      # Typer app: search / types / targets / install / uninstall
+  install.py                  # orchestrator for `agy-route install/uninstall`
+  install_data/
+    skill.md                  # mirror of skills/agy-web-search/SKILL.md (for lite install)
+    hooks.json                # mirror of hooks/hooks.json (for lite install)
+  targets/
+    base.py                   # Target ABC
+    claude.py                 # Claude Code target (~/.claude/ + settings.json)
   hooks/
     pretooluse.py             # the hook binary — `agy-route-hook-pretooluse`
   policies/

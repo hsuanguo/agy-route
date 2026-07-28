@@ -1,6 +1,6 @@
 [project]
 name = "agy-route"
-version = "0.1.0"
+version = "0.2.0"
 description = "Typed, policy-gated proxy in front of the agy (Google Antigravity) CLI."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,19 +29,20 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/agy_route"]
 
-# The Claude-plugin tree (manifest, SKILL, command) also lives at the repo
+# The Claude-plugin tree (manifest, SKILL, command, hooks) lives at the repo
 # root for human inspection / GitHub browsing. The canonical, runtime-use
 # copies of the policy files ship with the Python package under
 # `src/agy_route/policies/` so importlib.resources can find them after
-# `uv tool install`.
-[tool.hatch.build.targets.wheel.shared-data]
-".claude-plugin" = "agy_route/claude-plugin"
-"commands"      = "agy_route/commands"
-"skills"        = "agy_route/skills"
-"config"        = "agy_route/config"
-"hooks"         = "agy_route/hooks"
-
+# `uv tool install`. The install_data mirror (SKILL.md + hooks.json used by
+# `agy-route install`) is force-included so it ships inside the wheel.
 [tool.hatch.build.targets.wheel.force-include]
+"src/agy_route/install_data/hooks.json" = "agy_route/install_data/hooks.json"
+"src/agy_route/install_data/skill.md"   = "agy_route/install_data/skill.md"
+".claude-plugin" = "agy_route/claude-plugin"
+"commands"       = "agy_route/commands"
+"skills"         = "agy_route/skills"
+"config"         = "agy_route/config"
+"hooks"          = "agy_route/hooks"
 "README.md"      = "agy_route/README.md"
 "CHANGELOG.md"   = "agy_route/CHANGELOG.md"
 "LICENSE"        = "agy_route/LICENSE"

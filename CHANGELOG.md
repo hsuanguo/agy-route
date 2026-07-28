@@ -1,42 +1,60 @@
 # Changelog
 
+## 0.2.0 — 2026-07-28
+
+**Added**
+- `agy-route install` / `agy-route uninstall` / `agy-route targets`
+  subcommands for the **lite install** path. Drops the SKILL.md and
+  PreToolUse hook directly into `~/.claude/` (or whatever target the
+  user picks via `--target`), no marketplace needed.
+  - `--skill-only`, `--hook-only`, `--dry-run` flags.
+  - Idempotent — re-running is a no-op when nothing has changed.
+  - Auto-backup of `~/.claude/settings.json` to `.bak.<mtime>` before
+    any write.
+  - Namespace-tagged hook entries (`_meta.agy_route = "agy-route"`)
+    so `agy-route uninstall` only touches entries we wrote, never the
+    user's other hook config.
+  - Scan-all uninstall: `agy-route uninstall` (no `--target`) walks
+    every registered target and removes whatever it finds.
+  - Target abstraction (`src/agy_route/targets/`) — adding a new
+    target is one new file + a registration line. Currently only
+    `claude` is registered.
+- `src/agy_route/install_data/skill.md` + `hooks.json` — mirrors of the
+  plugin tree, packaged in the wheel via `importlib.resources`. No
+  repo clone required to run `agy-route install`.
+- `skills/agy-web-search/SKILL.md` — restored as the **intent-surface
+  layer** alongside the hook (tool-call surface). Broader trigger
+  catalog ("with sources", "find a citation", "what does X's docs
+  say", "verify against", "as of", etc.) so Claude reaches for
+  `agy-route search` directly via Bash for paraphrased search
+  requests that wouldn't trigger `WebSearch`.
+
 ## 0.1.0 — 2026-07-27
 
 First release of the `agy-web-search` plugin.
 
 **Added**
 - `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json` manifest.
-- `skills/agy-web-search/SKILL.md` — slim reference skill for `agy-route`
-  (the hook does the actual routing; the skill is a fallback + reference).
-- `commands/agy-search.md` — `/agy-search "<query>"` slash command for
-  explicit one-shot searches.
+- `skills/agy-web-search/SKILL.md` — slim reference skill for `agy-route`.
+- `commands/agy-search.md` — `/agy-search "<query>"` slash command.
 - `hooks/hooks.json` + `src/agy_route/hooks/pretooluse.py` — `PreToolUse`
   hook on `WebSearch` that denies the call and tells Claude to run
-  `agy-route search "<query>"` via Bash instead. Installed as the
-  console script `agy-route-hook-pretooluse`. `WebFetch` is left alone.
-- `pyproject.toml` — PEP 621 metadata; declares two console scripts:
-  `agy-route` (the Typer app) and `agy-route-hook-pretooluse` (the hook).
-  Installable with `uv tool install git+https://github.com/hsuanguo/agy-route`.
-- `src/agy_route/cli.py` — Typer app, the `agy-route` wrapper:
-  - `agy-route search "<query>"` (v0.1.0; `--type search` only).
-  - Tool policy inlined as part of the prompt (search-web only).
-  - Model auto-resolved from `agy models`, cached 60 min
-    at `~/.cache/agy-route-models`; reported in the JSON envelope.
-    `AGY_ROUTE_FORCE_MODEL=1` opts into passing `--model` to `agy`.
-  - Stable exit codes: 0 · 2 · 3 · 10 (quota) · 11 (auth) · 12 (timeout) ·
-    13 (agy-missing) · 14 (model-unavailable) · 15 (permission-denied).
-  - `--json` envelope: `success`, `type`, `model_used`, `duration_seconds`,
-    `response` / `error_class` / `error`.
-  - Verified end-to-end against `agy 1.1.1`: real `search_web` calls,
-    real URLs in the response (Tokyo population, SF weather, Paris,
-    Anthropic CEO).
+  `agy-route search "<query>"` via Bash instead.
+- `pyproject.toml` — PEP 621 metadata + `agy-route` + `agy-route-hook-pretooluse`
+  console scripts. Installable with `uv tool install git+https://github.com/hsuanguo/agy-route`.
+- `src/agy_route/cli.py` — Typer app: `agy-route search "<query>"`,
+  `agy-route types`. Search-only tool policy, model auto-resolved from
+  `agy models` and cached 60 min at `~/.cache/agy-route-models`. Stable
+  exit codes 0/2/3/10/11/12/13/14/15; `--json` envelope.
+  Verified end-to-end against `agy 1.1.1`: real `search_web` calls,
+  real URLs (Wikipedia, Forbes, UN, e-Stat, Weather Underground, KQED).
 
 **Naming history**
 - v0.1.0 went out under `agy-bridge` + bash (`scripts/agy_bridge.sh`).
 - Same v0.1.0 line renamed the wrapper to `agy-route` (Typer + Python)
-  and then renamed the *repo* from `agy-harness` → `agy-route` so
+  and renamed the *repo* from `agy-harness` → `agy-route` so
   binary / package / repo are aligned. The bash wrapper is gone; the
-  PreToolUse hook now drives routing.
+  PreToolUse hook drives routing.
 - `scripts/install.sh` — pinned wrapper installer; idempotent; backs up
   any pre-existing shim at `~/.local/bin/agy-bridge`.
 - `scripts/uninstall.sh` — reverses the install; refuses to delete files
