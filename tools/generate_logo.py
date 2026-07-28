@@ -1,9 +1,21 @@
 #!/usr/bin/env python3
 """Generate the agy-route logo (assets/logo.svg + assets/icon.svg).
 
-Style mirrors https://github.com/hsuanguo/act-cli/blob/main/assets/logo.svg :
-a horizontal lockup (icon + wordmark) in a single SVG, with a CSS-driven
-fill that flips black ↔ near-white between light and dark color schemes.
+Style:
+- Icon: a clean, line-art "routing diagram" — input source (small
+  circle), input stem, junction node (rounded square), two branches
+  ending at destination nodes. All stroked; reads at any size and
+  matches the project name: one CLI (agy), many routes (search today;
+  review/research/etc. tomorrow).
+- Wordmark: glyphs extracted from DejaVu Sans Bold via fontTools at
+  generation time. Self-contained SVG path data — no font dependency
+  at render time, so the SVG looks the same in browsers, GitHub
+  READMEs, and local previews.
+
+Why fontTools: act-cli's logo uses pixel-block letterforms which read
+well for short angular words ("act-cli") but get cramped for longer
+rounder names ("agy-route", 9 chars with several round shapes). A
+proper proportional sans is always legible and looks modern.
 
 Run from the repo root:
 
@@ -11,183 +23,146 @@ Run from the repo root:
 
 Writes:
     assets/logo.svg   # horizontal lockup, 640×128
-    assets/icon.svg   # icon only, 512×512 (favicon / social-card use)
+    assets/icon.svg   # icon only, 512×512
 
-Re-run after any letterform tweak; the file is fully derived from this
-script and is checked into the repo.
+Re-run after any layout / icon tweak or to regenerate the wordmark.
 """
 from __future__ import annotations
 
 from pathlib import Path
 
-CELL = 10  # px per pixel-cell in the wordmark
-LETTER_GAP_CELLS = 1  # 1 cell gap between letters (matches act-cli)
+from fontTools.ttLib import TTFont
+from fontTools.pens.svgPathPen import SVGPathPen
+
+FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+
+# Wordmark vertical box: height 100, fits the font cap-height with a
+# little whitespace on top.
+WORDMARK_BOX_W = 460
+WORDMARK_BOX_H = 100
+WORDMARK_BOX_X = 152
+WORDMARK_BOX_Y = 14
+
+# Icon placement matches act-cli's geometry.
+ICON_X, ICON_Y, ICON_W, ICON_H = 24, 8, 112, 112
+ICON_STROKE = 14
 
 
-# Each letter is a list of (col, row) cells that should be filled, on a
-# 5-col × 7-row grid (with `width` overriding 5 for narrower letters like
-# `t`, `r`, `-`). y is from the top.
-LETTERS: dict[str, tuple[int, list[tuple[int, int]]]] = {
-    "a": (
-        5,
-        [
-            (1, 0), (2, 0), (3, 0),
-            (0, 1), (4, 1),
-            (0, 2), (4, 2),
-            (0, 3), (1, 3), (2, 3), (3, 3), (4, 3),
-            (0, 4), (4, 4),
-            (0, 5), (4, 5),
-            (0, 6), (4, 6),
-        ],
-    ),
-    "g": (
-        5,
-        [
-            (1, 0), (2, 0), (3, 0),
-            (0, 1), (4, 1),
-            (0, 2), (4, 2),
-            (0, 3), (4, 3),
-            (1, 4), (2, 4), (3, 4), (4, 4),
-            (0, 5), (4, 5),
-            (1, 6), (2, 6), (3, 6),
-        ],
-    ),
-    "y": (
-        5,
-        [
-            (0, 0), (4, 0),
-            (0, 1), (4, 1),
-            (0, 2), (4, 2),
-            (1, 3), (2, 3), (3, 3),
-            (4, 4),
-            (4, 5),
-            (1, 6), (2, 6), (3, 6),
-        ],
-    ),
-    "-": (
-        3,
-        [
-            (0, 3), (1, 3), (2, 3),
-        ],
-    ),
-    "r": (
-        4,
-        [
-            (0, 0), (1, 0),
-            (0, 1), (1, 1), (3, 1),
-            (0, 2), (3, 2),
-            (0, 3),
-            (0, 4),
-            (0, 5),
-            (0, 6),
-        ],
-    ),
-    "o": (
-        5,
-        [
-            (1, 0), (2, 0), (3, 0),
-            (0, 1), (4, 1),
-            (0, 2), (4, 2),
-            (0, 3), (4, 3),
-            (0, 4), (4, 4),
-            (0, 5), (4, 5),
-            (1, 6), (2, 6), (3, 6),
-        ],
-    ),
-    "u": (
-        5,
-        [
-            (0, 0), (4, 0),
-            (0, 1), (4, 1),
-            (0, 2), (4, 2),
-            (0, 3), (4, 3),
-            (0, 4), (4, 4),
-            (0, 5), (4, 5),
-            (1, 6), (2, 6), (3, 6),
-        ],
-    ),
-    "t": (
-        3,
-        [
-            (1, 0),
-            (1, 1),
-            (0, 2), (1, 2), (2, 2),
-            (1, 3),
-            (1, 4),
-            (1, 5),
-            (1, 6), (2, 6),
-        ],
-    ),
-    "e": (
-        5,
-        [
-            (1, 0), (2, 0), (3, 0),
-            (0, 1), (4, 1),
-            (0, 2), (4, 2),
-            (0, 3), (1, 3), (2, 3), (3, 3), (4, 3),
-            (0, 4),
-            (0, 5),
-            (1, 6), (2, 6), (3, 6),
-        ],
-    ),
-}
-
-
-def render_wordmark(text: str) -> tuple[str, int, int]:
-    """Render `text` as a single SVG <path d="…">. Returns (d_attr, w, h) in px.
-
-    Caller wraps the result in a `<g class="logo-fill">` (or applies
-    `fill="currentColor"` directly). The path itself uses no fill attr.
-    """
-    pieces: list[str] = []
-    x_cursor = 0  # cell units
-    max_w_cells = 0
-    for ch in text:
-        if ch not in LETTERS:
-            raise KeyError(f"no glyph defined for {ch!r}")
-        width, cells = LETTERS[ch]
-        if x_cursor > 0:
-            x_cursor += LETTER_GAP_CELLS
-        for col, row in cells:
-            x = (x_cursor + col) * CELL
-            y = row * CELL
-            # Each cell: Mx,y h10 v10 h-10 z
-            pieces.append(f"M{x},{y}h10v10h-10z")
-        x_cursor += width
-        max_w_cells = x_cursor
-    width_px = max_w_cells * CELL
-    height_px = 7 * CELL
-    return "".join(pieces), width_px, height_px
+# --- Icon -------------------------------------------------------------------
 
 
 def render_icon() -> str:
-    """A 512×512 routing icon: input bar → junction node → two branches.
+    """512x512 routing diagram: input source, junction, two branches."""
+    cx, cy = 256, 256
+    left_x_end = 96
+    right_x_end = 432
+    j_w, j_h = 88, 88
+    top_y = 152
+    bot_y = 360
+    return (
+        # input source circle
+        f'<circle cx="{left_x_end - 16}" cy="{cy}" r="18" fill="currentColor"/>'
+        # input stem
+        f'<line x1="{left_x_end + 4}" y1="{cy}" x2="{cx - j_w // 2}" y2="{cy}" '
+        f'stroke="currentColor" stroke-width="{ICON_STROKE}" stroke-linecap="round"/>'
+        # junction node (rounded square outline)
+        f'<rect x="{cx - j_w // 2}" y="{cy - j_h // 2}" width="{j_w}" height="{j_h}" '
+        f'rx="14" fill="none" stroke="currentColor" stroke-width="{ICON_STROKE}"/>'
+        # top branch — vertical out of junction up
+        f'<line x1="{cx + j_w // 2}" y1="{cy - j_h // 2}" x2="{cx + j_w // 2}" y2="{top_y}" '
+        f'stroke="currentColor" stroke-width="{ICON_STROKE}" stroke-linecap="round"/>'
+        # top branch — horizontal
+        f'<line x1="{cx + j_w // 2}" y1="{top_y}" x2="{right_x_end}" y2="{top_y}" '
+        f'stroke="currentColor" stroke-width="{ICON_STROKE}" stroke-linecap="round"/>'
+        # top destination
+        f'<circle cx="{right_x_end + 16}" cy="{top_y}" r="18" fill="currentColor"/>'
+        # bottom branch — vertical out of junction down
+        f'<line x1="{cx + j_w // 2}" y1="{cy + j_h // 2}" x2="{cx + j_w // 2}" y2="{bot_y}" '
+        f'stroke="currentColor" stroke-width="{ICON_STROKE}" stroke-linecap="round"/>'
+        # bottom branch — horizontal
+        f'<line x1="{cx + j_w // 2}" y1="{bot_y}" x2="{right_x_end}" y2="{bot_y}" '
+        f'stroke="currentColor" stroke-width="{ICON_STROKE}" stroke-linecap="round"/>'
+        # bottom destination
+        f'<circle cx="{right_x_end + 16}" cy="{bot_y}" r="18" fill="currentColor"/>'
+    )
 
-    Drawn entirely with rounded rects, no transforms, so the path data is
-    straightforward and copy-pasteable. Themed "split-route" — fits the
-    project name (agy-route: one CLI, many routes).
 
-    Each rect uses `fill="currentColor"` so the wrapping <style> block
-    can flip the fill via `prefers-color-scheme` without any class
-    selectors getting in the way.
+# --- Wordmark ---------------------------------------------------------------
+
+# We pull glyph paths from a real font so the wordmark is always readable,
+# no matter the rendering context.
+
+_FONT: TTFont | None = None
+_GLYPH_SET = None
+_CMAP = None
+_HMTX = None
+_UPEM = 0
+
+
+def _font() -> tuple[TTFont, object, dict[int, str], dict[str, tuple[int, int]], int]:
+    global _FONT, _GLYPH_SET, _CMAP, _HMTX, _UPEM
+    if _FONT is None:
+        _FONT = TTFont(FONT_PATH)
+        _GLYPH_SET = _FONT.getGlyphSet()
+        _CMAP = _FONT.getBestCmap()
+        _HMTX = _FONT["hmtx"]
+        _UPEM = _FONT["head"].unitsPerEm
+    return _FONT, _GLYPH_SET, _CMAP, _HMTX, _UPEM
+
+
+def render_wordmark(
+    text: str,
+    font_size_units: int = 100,
+    x_offset_units: int = 0,
+) -> tuple[str, float, float]:
+    """Render `text` as a single SVG path d-string.
+
+    Args:
+      text: characters to render.
+      font_size_units: target cap-height in user-units. Each glyph is
+        scaled so its cap-height == this value.
+      x_offset_units: starting x position.
+
+    Returns (path_d, width_units, ascent_units).
     """
-    f = ' fill="currentColor"'
-    parts = [
-        # input bar (left)
-        f'<rect x="64" y="240" width="160" height="32" rx="4"{f}/>',
-        # junction node (center)
-        f'<rect x="224" y="224" width="64" height="64" rx="8"{f}/>',
-        # branch stem (center → up): vertical segment
-        f'<rect x="288" y="128" width="32" height="96"{f}/>',
-        # branch stem (center → up): horizontal segment
-        f'<rect x="320" y="128" width="128" height="32"{f}/>',
-        # branch stem (center → down): vertical segment
-        f'<rect x="288" y="288" width="32" height="96"{f}/>',
-        # branch stem (center → down): horizontal segment
-        f'<rect x="320" y="352" width="128" height="32"{f}/>',
-    ]
-    return "".join(parts)
+    font, glyph_set, cmap, hmtx, upem = _font()
+    # Cap-height heuristic: use font's OS/2 sCapHeight if available, else 70% of upem.
+    cap_height = getattr(font.get("OS/2"), "sCapHeight", None) or int(upem * 0.7)
+    scale = font_size_units / cap_height
 
+    pieces: list[str] = []
+    x_cursor_units = x_offset_units
+    for ch in text:
+        if ord(ch) not in cmap:
+            raise KeyError(f"no glyph for {ch!r} in {FONT_PATH}")
+        gname = cmap[ord(ch)]
+        glyph = glyph_set[gname]
+        pen = SVGPathPen(glyph_set)
+        glyph.draw(pen)
+        raw_d = pen.getCommands()
+        # SVG y is down; font is y-up. Wrap with a transform that flips + scales.
+        # Transform: x' = scale*x + x_cursor; y' = scale*y - cap_height*scale  + ... = ...
+        # Easier: emit each subcommand with a transform wrapper using a <g>
+        # transform="translate(...) scale(...)" — but we want a single path.
+        # Apply the transform numerically to the raw path d by re-emitting it
+        # with a leading matrix().
+        # Cap-height in font units:
+        cap_h_units = cap_height
+        # We translate by x_cursor, scale by `scale`, then translate by (0, +cap_h) so
+        # the glyph's baseline sits at y=0 and y increases downward.
+        transform = (
+            f"matrix({scale} 0 0 {-scale} {x_cursor_units:.2f} {cap_h_units * scale:.2f})"
+        )
+        pieces.append(f'<path d="{raw_d}" transform="{transform}"/>')
+        adv_width, _lsb = hmtx[gname]
+        x_cursor_units += adv_width * scale
+
+    # Width is the advance sum (font units * scale).
+    width_units = x_cursor_units - x_offset_units
+    return "".join(pieces), width_units, font_size_units  # height = cap-height target
+
+
+# --- CSS + SVG composition ---------------------------------------------------
 
 CSS = """
     .logo-fill { color: #000000; }
@@ -198,14 +173,20 @@ CSS = """
 
 
 def build_logo_svg() -> str:
-    wordmark_d, wm_w, wm_h = render_wordmark("agy-route")
     icon = render_icon()
-    # Icon is 112×112 placed at (24, 8) — matches act-cli's geometry.
-    # Wordmark is 460×70 placed at (152, 29). Scale wordmark to fit.
-    # Our wordmark is sized for 480×70 by default; we size to 460×70 to
-    # match act-cli's wordmark box width.
-    wm_box_w = 460
-    wm_box_h = 70
+    wordmark_paths, wordmark_w, wordmark_h = render_wordmark("agy-route", font_size_units=80)
+    # 80-unit cap-height ⇒ visually about the right size in our 100-tall box
+    # (descenders extend below baseline; we trim the top via the box viewBox).
+    # Center vertically in the 100-tall wordmark box: shift the baseline path
+    # so glyph baselines sit roughly at y = 76 of 100 (matches cap-height 80
+    # with small top margin).
+    # We re-render with an explicit y shift baked into the per-glyph matrix so
+    # glyphs align within the box.
+    wordmark_paths_offset, _, _ = render_wordmark(
+        "agy-route", font_size_units=80, x_offset_units=0
+    )
+    # The glyph paths are emitted with translate/scale per glyph already; we
+    # wrap the entire group with another translate to position within the box.
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 128" role="img" aria-labelledby="title desc">
   <title id="title">agy-route horizontal lockup</title>
@@ -215,11 +196,15 @@ def build_logo_svg() -> str:
 {CSS}    ]]></style>
   </defs>
   <rect width="640" height="128" fill="none"/>
-  <svg x="24" y="8" width="112" height="112" viewBox="0 0 512 512" aria-hidden="true">
-    <g class="logo-fill">{icon}</g>
+  <svg x="{ICON_X}" y="{ICON_Y}" width="{ICON_W}" height="{ICON_H}" viewBox="0 0 512 512" aria-hidden="true">
+    <g class="logo-fill">
+      {icon}
+    </g>
   </svg>
-  <svg x="152" y="29" width="{wm_box_w}" height="{wm_box_h}" viewBox="0 0 {wm_w} {wm_h}" aria-hidden="true">
-    <g class="logo-fill" fill="currentColor"><path d="{wordmark_d}"/></g>
+  <svg x="{WORDMARK_BOX_X}" y="{WORDMARK_BOX_Y}" width="{WORDMARK_BOX_W}" height="{WORDMARK_BOX_H}" viewBox="0 0 {wordmark_w:.2f} {wordmark_h}" preserveAspectRatio="xMinYMid meet" aria-hidden="true">
+    <g class="logo-fill" fill="currentColor">
+      {wordmark_paths}
+    </g>
   </svg>
 </svg>
 """
@@ -230,12 +215,14 @@ def build_icon_svg() -> str:
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
   <title id="title">agy-route icon</title>
-  <desc id="desc">A split-route icon: input bar, junction node, two branches.</desc>
+  <desc id="desc">A routing diagram: input source → junction → two branches ending at destination nodes.</desc>
   <defs>
     <style type="text/css"><![CDATA[
 {CSS}    ]]></style>
   </defs>
-  <g class="logo-fill">{icon}</g>
+  <g class="logo-fill">
+    {icon}
+  </g>
 </svg>
 """
 
