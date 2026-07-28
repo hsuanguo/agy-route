@@ -12,7 +12,7 @@ First release of the `agy-web-search` plugin.
   explicit one-shot searches.
 - `pyproject.toml` — PEP 621 metadata; declares `agy-route` as a console
   script entry point. Installable with `uv tool install
-  git+https://github.com/hsuanguo/agy-harness`.
+  git+https://github.com/hsuanguo/agy-route`.
 - `src/agy_route/cli.py` — Typer app, the `agy-route` wrapper:
   - `agy-route search "<query>"` (v0.1.0; `--type search` only).
   - Tool policy inlined as part of the prompt (search-web only).
