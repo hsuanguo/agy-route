@@ -1,64 +1,84 @@
 ---
 name: agy-web-search
-description: Use when Claude is asked to perform a web search, look up current or latest information, find URLs, verify a fact against the open web, or gather citations. Routes the request through the agy CLI (Google Antigravity CLI) so the search runs on Gemini with grounded source citations instead of Claude's built-in web search. Triggers on: "search the web", "look up", "find online", "current info", "latest", "search for", "what's the latest", "search via agy", "grounded search", "find a source", "cite a source".
+description: Reference for the agy-route wrapper. The plugin's hook auto-routes Claude's WebSearch tool to `agy-route search`; this skill documents what `agy-route` is, when to call it directly via Bash, and how to interpret its output. The skill is a fallback + reference layer — the hook does the actual routing.
 ---
 
-# AGY Web Search
+# AGY Web Search — `agy-route` reference
 
-This skill routes web searches through the **agy CLI** (Google Antigravity CLI, Gemini under the hood) so every search returns grounded, source-cited results. When the skill is active, prefer `agy-route search` over Claude's built-in `WebSearch` / `web_search` tool.
+The plugin ships a `PreToolUse` hook that intercepts Claude's `WebSearch`
+tool calls and reroutes them to `agy-route search` (a policy-gated,
+grounded alternative that uses the agy CLI's `search_web` tool with
+source citations). That hook is the primary mechanism — Claude never
+needs to know about `agy-route` for web search to be routed correctly.
 
-## When to use it
+This skill remains as a reference layer for two cases:
 
-Use `agy-route search` whenever the answer depends on current or external information:
+1. **Hook is disabled** — if a user turns the hook off (or it fails to
+   register because `agy-route` is not installed), Claude can still
+   call `agy-route search` directly via the Bash tool.
+2. **Direct call is cleaner** — for queries where Claude would
+   otherwise reach for a different tool (e.g. a paraphrased "find me a
+   source for …" that wouldn't trigger `WebSearch`), Claude may
+   decide to invoke `agy-route search` directly via Bash.
 
-- "What's the latest …", "current price of …", "what changed in release X"
-- Factual claims that need real source URLs and dates
-- Pricing, changelogs, release notes, documentation pages
-- Anything where the user asks for "with sources" or "cited"
+## When to call `agy-route search` directly
 
-Do **not** use it for stable, parametric knowledge (programming language syntax, math fundamentals, established science). For those, answer directly — no tool call needed.
+- Factual claims that need real source URLs and dates.
+- Pricing, changelogs, release notes, documentation pages.
+- Anything where the user asks for "with sources" or "cited".
+
+Do **not** reach for `agy-route` for stable parametric knowledge
+(programming language syntax, math fundamentals, established science) —
+answer directly, no tool call.
 
 ## How to call it
 
-The wrapper `agy-route` is installed via `uv tool install git+https://github.com/hsuanguo/agy-route` once per machine. It wraps `agy --print` with a search-only tool policy and a Gemini prompt prefix that forces a real `search_web` call.
+The wrapper is installed via
+`uv tool install git+https://github.com/hsuanguo/agy-route`. It wraps
+`agy --print` with a search-only tool policy and a Gemini prompt prefix
+that forces a real `search_web` call.
 
 ```bash
-# One-shot inline
+# Inline
 agy-route search "latest Antigravity CLI release"
 
-# With a piped prompt (safer for long queries)
+# Piped prompt (safer for long queries)
 echo "What changed in Python 3.13 between rc1 and final?" | agy-route search
 
-# JSON envelope for programmatic callers
+# JSON envelope
 echo "query" | agy-route search --json
 # → {"success":true,"model_used":"gemini-3.5-flash-high","type":"search",
 #    "duration_seconds":9,"response":"...citations..."}
 ```
 
-If `agy-route` is not on `$PATH`, tell the user to run `uv tool install git+https://github.com/hsuanguo/agy-route` once. Until then, fall back to Claude's built-in `WebSearch` tool — never call raw `agy` (you'll lose type routing, tool policy, and exit-code normalization).
-
 ## Result format
 
-`agy-route search` returns plain text: a synthesized answer plus a list of source URLs with publication dates. **Echo the citations back to the user verbatim** — do not paraphrase URLs or dates, and do not strip them when the user asked for "the answer".
+`agy-route search` returns plain text: a synthesized answer plus a list
+of source URLs with publication dates. **Echo the citations back to the
+user verbatim** — do not paraphrase URLs or dates, and do not strip them
+when the user asked for "the answer".
 
-For programmatic use, pass `--json` to get the `{"success", "model_used", "type", "duration_seconds", "response"}` envelope.
+For programmatic use, pass `--json` to get the
+`{"success", "model_used", "type", "duration_seconds", "response"}`
+envelope.
 
 ## Model
 
-Defaults to the latest `gemini-*-flash-high` resolved from `agy models` (cached 60 min at `~/.cache/agy-route-models`). Override with `--model "<exact name from agy models>"`. Override the resolution cache by deleting that file.
+Defaults to the latest `gemini-*-flash-high` resolved from `agy models`
+(cached 60 min at `~/.cache/agy-route-models`). Override with
+`--model "<exact name from agy models>"`. Override the resolution cache
+by deleting that file.
 
 ## Common mistakes
 
 | Symptom | Fix |
 |---|---|
-| `agy-route: command not found` | Wrapper not installed — `uv tool install git+https://github.com/hsuanguo/agy-route`. Until fixed, fall back to built-in WebSearch. |
-| Response has no source URLs | The model skipped the search — re-run; the search-only policy forces `search_web`. |
-| `Exit 124` (timeout) | Default 300 s; pass `--timeout 600` for slower queries. |
-| `Exit 13` (`agy-missing`) | `agy` not on PATH — install it (https://antigravity.google/docs/cli-using). |
-| `Exit 14` (`model-unavailable`) | Cached model id stale — `rm ~/.cache/agy-route-models` and retry. |
+| `agy-route: command not found` | Wrapper not installed — `uv tool install git+https://github.com/hsuanguo/agy-route`. |
+| Hook didn't intercept a `WebSearch` call | The hook matches `WebSearch` only. `WebFetch` (direct URL fetch) is left alone — call `agy-route search` manually if you want grounded results for a known URL. |
 | Empty reply / `Exit 3` | Quota or auth — check stderr; the JSON envelope includes `error_class` when `--json` is set. |
 | Calling raw `agy` directly | Use `agy-route` — direct calls skip the search-only tool policy. |
 
 ## Privacy
 
-Do **not** pipe content containing credentials, API keys, or PII into `agy-route`. The prompt is sent to Google's Gemini service.
+Do **not** pipe content containing credentials, API keys, or PII into
+`agy-route`. The prompt is sent to Google's Gemini service.

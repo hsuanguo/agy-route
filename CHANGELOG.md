@@ -6,13 +6,17 @@ First release of the `agy-web-search` plugin.
 
 **Added**
 - `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json` manifest.
-- `skills/agy-web-search/SKILL.md` — Claude uses agy for any
-  web-search-shaped request when the skill is active.
+- `skills/agy-web-search/SKILL.md` — slim reference skill for `agy-route`
+  (the hook does the actual routing; the skill is a fallback + reference).
 - `commands/agy-search.md` — `/agy-search "<query>"` slash command for
   explicit one-shot searches.
-- `pyproject.toml` — PEP 621 metadata; declares `agy-route` as a console
-  script entry point. Installable with `uv tool install
-  git+https://github.com/hsuanguo/agy-route`.
+- `hooks/hooks.json` + `src/agy_route/hooks/pretooluse.py` — `PreToolUse`
+  hook on `WebSearch` that denies the call and tells Claude to run
+  `agy-route search "<query>"` via Bash instead. Installed as the
+  console script `agy-route-hook-pretooluse`. `WebFetch` is left alone.
+- `pyproject.toml` — PEP 621 metadata; declares two console scripts:
+  `agy-route` (the Typer app) and `agy-route-hook-pretooluse` (the hook).
+  Installable with `uv tool install git+https://github.com/hsuanguo/agy-route`.
 - `src/agy_route/cli.py` — Typer app, the `agy-route` wrapper:
   - `agy-route search "<query>"` (v0.1.0; `--type search` only).
   - Tool policy inlined as part of the prompt (search-web only).
@@ -29,9 +33,10 @@ First release of the `agy-web-search` plugin.
 
 **Naming history**
 - v0.1.0 went out under `agy-bridge` + bash (`scripts/agy_bridge.sh`).
-- Renamed to `agy-route` (Typer + Python) in the same v0.1.0 line —
-  the upstream commit replacing the bash wrapper has not been tagged
-  with a new version; the source-of-truth is `main`.
+- Same v0.1.0 line renamed the wrapper to `agy-route` (Typer + Python)
+  and then renamed the *repo* from `agy-harness` → `agy-route` so
+  binary / package / repo are aligned. The bash wrapper is gone; the
+  PreToolUse hook now drives routing.
 - `scripts/install.sh` — pinned wrapper installer; idempotent; backs up
   any pre-existing shim at `~/.local/bin/agy-bridge`.
 - `scripts/uninstall.sh` — reverses the install; refuses to delete files
