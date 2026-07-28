@@ -9,6 +9,15 @@ citations.
 This is the first plugin in the [`agy-route`](.) repo. Future plugins (review,
 research, …) become subcommands of the same `agy-route` binary.
 
+> **You don't need to install the Claude Code marketplace.**
+> The repo ships a `.claude-plugin/marketplace.json` so anyone who *wants*
+> the marketplace path can `/plugin marketplace add
+> https://github.com/hsuanguo/agy-route`, but it's **opt-in**. The
+> recommended install is the **lite path** below — two commands, no
+> marketplace, no plugin registry. Pick the marketplace path only if you want
+> the `/agy-search` slash command, versioned `/plugin update`, or to appear
+> in `/plugin marketplace browse`.
+
 ## What you get
 
 - **`PreToolUse` hook on `WebSearch`** — every Claude-initiated web search is
@@ -18,7 +27,9 @@ research, …) become subcommands of the same `agy-route` binary.
 - A slim **`agy-web-search` skill** that documents `agy-route` for Claude —
   useful when the hook is disabled, or when Claude wants to call `agy-route`
   directly for queries that wouldn't trigger `WebSearch`.
-- A **`/agy-search "<query>"` slash command** for an explicit one-shot search.
+- A **`/agy-search "<query>"` slash command** for an explicit one-shot search
+  (only registered when you install via the marketplace path; see the callout
+  above).
 - The **`agy-route` Python wrapper** (`src/agy_route/cli.py`, distributed via
   `uv tool install`) that:
   - locks the search down to a `search_web`-only tool policy,
@@ -31,41 +42,57 @@ hook.
 
 ## Install
 
-1. **Install `agy` and authenticate.** See
-   [Antigravity CLI docs](https://antigravity.google/docs/cli-using). Confirm with
-   `agy models` (should list Gemini Flash / Pro entries).
-2. **Install `agy-route` as a uv tool.** This puts both `agy-route` and the
-   hook binary `agy-route-hook-pretooluse` on `$PATH` under `$HOME/.local/bin`:
-   ```
-   uv tool install git+https://github.com/hsuanguo/agy-route
-   ```
-   (Or from a local checkout: `uv tool install /path/to/agy-route`.)
-3. **Drop the SKILL.md and hook into Claude Code.** Two equivalent paths:
+### Recommended: lite install (no marketplace)
 
-   **A. Plugin marketplace path** (managed — recommended for most users):
-   ```
-   /plugin marketplace add https://github.com/hsuanguo/agy-route
-   /plugin install agy-web-search
-   ```
+Two commands. The plugin's `PreToolUse` hook + the SKILL.md get dropped into
+`~/.claude/` directly. No marketplace, no plugin registry, no registry
+updates — just files.
 
-   **B. `agy-route install` lite path** (no marketplace, drops into `~/.claude/`):
-   ```
-   agy-route install                # install SKILL.md + hook for Claude Code
-   agy-route install --skill-only   # just the SKILL.md
-   agy-route install --hook-only    # just the hook
-   agy-route install --dry-run      # show what would change, no filesystem writes
-   ```
-   Targets other than `claude` (default) are opt-in via `--target`. Currently
-   registered: `claude`. Run `agy-route targets` for the live list.
+```bash
+# 1. Install the agy CLI and authenticate:
+#    https://antigravity.google/docs/cli-using
+agy models                       # should list Gemini Flash / Pro entries
 
-4. **Verify.**
-   ```
-   agy-route types
-   agy-route search "latest Antigravity CLI release"
-   ```
-   The hook is wired automatically. You can confirm by asking Claude a
-   question that would normally trigger a web search; the response will cite
-   Gemini-grounded URLs.
+# 2. Install `agy-route` as a uv tool (puts `agy-route` and
+#    `agy-route-hook-pretooluse` on $PATH under ~/.local/bin):
+uv tool install git+https://github.com/hsuanguo/agy-route
+
+# 3. Drop the SKILL.md and hook into Claude Code:
+agy-route install                # SKILL.md + hook for Claude Code (default)
+# Optional flags:
+#   agy-route install --skill-only   # just the SKILL.md
+#   agy-route install --hook-only    # just the hook
+#   agy-route install --dry-run      # show what would change, no filesystem writes
+#   agy-route install --target <name>  # other targets (currently: claude only)
+```
+
+That's it. Verify with:
+
+```bash
+agy-route types
+agy-route search "latest Antigravity CLI release"
+```
+
+The hook is wired automatically. You can confirm by asking Claude a question
+that would normally trigger a web search; the response will cite Gemini-grounded
+URLs.
+
+### Optional: plugin marketplace path
+
+Use this only if you want the `/agy-search` slash command, versioned
+`/plugin update`, or marketplace browsability. Adds a `/plugin marketplace
+add` + `/plugin install` step but gives you those features.
+
+```bash
+uv tool install git+https://github.com/hsuanguo/agy-route
+/plugin marketplace add https://github.com/hsuanguo/agy-route
+/plugin install agy-web-search
+```
+
+You can switch between paths any time — `agy-route uninstall` reverses the
+lite install, `/plugin uninstall agy-web-search` reverses the marketplace one.
+The two paths don't conflict; if you install both, the second is a no-op
+(idempotent).
 
 ## Usage
 
@@ -121,25 +148,30 @@ uv tool install --force --from git+https://github.com/hsuanguo/agy-route agy-rou
 
 ## Uninstall
 
-```
+```bash
+# Reverse the lite install:
 agy-route uninstall                # removes SKILL.md + hook for every registered target
 agy-route uninstall --target claude  # restrict to one target
 uv tool uninstall agy-route
-/plugin uninstall agy-web-search    # if you installed via the plugin path
+
+# Reverse the marketplace install (if you used it):
+/plugin uninstall agy-web-search
 ```
+
+The two paths don't conflict — uninstall each one you actually used.
 
 ## Layout
 
 ```
 .claude-plugin/
   plugin.json                 # plugin manifest (skills + commands + hooks)
-  marketplace.json            # marketplace entry (for /plugin marketplace add)
+  marketplace.json            # marketplace entry (for /plugin marketplace add — opt-in)
 hooks/
   hooks.json                  # PreToolUse hook wiring (WebSearch → agy-route)
 commands/
-  agy-search.md               # /agy-search <query> slash command
+  agy-search.md               # /agy-search <query> slash command (marketplace path only)
 skills/
-  agy-web-search/SKILL.md     # reference skill (the hook does the routing)
+  agy-web-search/SKILL.md     # intent-surface skill (hook is the tool-call surface)
 src/agy_route/
   cli.py                      # Typer app: search / types / targets / install / uninstall
   install.py                  # orchestrator for `agy-route install/uninstall`
