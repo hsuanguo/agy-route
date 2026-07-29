@@ -1,4 +1,4 @@
-# agy-route — `agy-web-search` plugin
+# agy-route
 
 <p align="left">
   <picture>
@@ -7,14 +7,24 @@
   </picture>
 </p>
 
-A Claude Code plugin that **routes web searches through the `agy` CLI** (Google
-Antigravity CLI — Gemini under the hood). When this plugin is enabled, Claude's
-built-in `WebSearch` tool is intercepted by a `PreToolUse` hook and rerouted to
-`agy-route search`, which uses `agy`'s grounded web search with real source
-citations.
+A Claude Code plugin (and CLI) that routes work through the **`agy` CLI**
+(Google Antigravity CLI — Gemini under the hood). Ships two surfaces today:
 
-This is the first plugin in the [`agy-route`](.) repo. Future plugins (review,
-research, …) become subcommands of the same `agy-route` binary.
+- **`agy-web-search`** — single-shot grounded web search. A `PreToolUse` hook
+  intercepts Claude's `WebSearch` tool calls and reroutes them to
+  `agy-route search`, which uses agy's `search_web` with real source
+  citations.
+- **`agy-route-research`** — multi-source deep research. Claude plans,
+  fans out sub-questions via `agy-route research fetch`, verifies each
+  load-bearing claim by URL-quote via `agy-route research quote`, then
+  synthesizes a cited report. Run with `/agy-research <topic>`.
+
+Both surfaces use the same `agy-route` binary (`uv tool install`), the
+same search-only tool policy (no file writes, no shell — `search_web` +
+`read_url` only), and the same exit-code conventions.
+
+This is the first plugin in the [`agy-route`](.) repo. Future plugins
+(review, code, …) become subcommands of the same `agy-route` binary.
 
 > **You don't need to install the Claude Code marketplace.**
 > The repo ships a `.claude-plugin/marketplace.json` so anyone who *wants*
@@ -22,10 +32,12 @@ research, …) become subcommands of the same `agy-route` binary.
 > https://github.com/hsuanguo/agy-route`, but it's **opt-in**. The
 > recommended install is the **lite path** below — two commands, no
 > marketplace, no plugin registry. Pick the marketplace path only if you want
-> the `/agy-search` slash command, versioned `/plugin update`, or to appear
-> in `/plugin marketplace browse`.
+> the `/agy-search` and `/agy-research` slash commands, versioned
+> `/plugin update`, or to appear in `/plugin marketplace browse`.
 
 ## What you get
+
+**Web search surface (`agy-web-search` plugin)**
 
 - **`PreToolUse` hook on `WebSearch`** — every Claude-initiated web search is
   denied with a reason that tells the model to call `agy-route search` via the
@@ -37,11 +49,21 @@ research, …) become subcommands of the same `agy-route` binary.
 - A **`/agy-search "<query>"` slash command** for an explicit one-shot search
   (only registered when you install via the marketplace path; see the callout
   above).
-- **Deep-research recipe** (`agy-route research fetch` + `agy-route research
-  quote` + `/agy-research <topic>` slash command + `agy-route-research`
-  skill): Claude plans + verifies + synthesizes, agy does the cheap
-  grounded legwork. Cited report with per-claim verification status.
-  See the *Deep research* section below.
+
+**Deep-research surface (`agy-route-research` plugin)**
+
+- `agy-route research fetch "<sub-question>"` — fan-out sub-question search
+  (5–8 bullets per call with URLs + dates). Run in parallel via Bash.
+- `agy-route research quote "<claim>" "<url>"` — opens the URL and quotes
+  the verbatim supporting sentence(s) (or `NOT SUPPORTED`). Run in parallel
+  per (claim, URL) pair.
+- `agy-route-research` skill — Claude-orchestrated deep-research recipe
+  (plan → fan-out → URL-quote → adversarial verify → synthesize).
+- `/agy-research <topic>` slash command — drives the full recipe from
+  inside one Bash session.
+
+**Shared plumbing**
+
 - The **`agy-route` Python wrapper** (`src/agy_route/cli.py`, distributed via
   `uv tool install`) that:
   - locks the search down to a `search_web`-only tool policy,
