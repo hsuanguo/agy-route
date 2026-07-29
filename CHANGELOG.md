@@ -1,5 +1,53 @@
 # Changelog
 
+## 0.4.0 — 2026-07-29
+
+**Added**
+
+- **opencode target** (`agy-route install --target opencode`). Skills,
+  hooks, and slash commands drop into opencode's standard config dirs;
+  opencode auto-loads everything from `~/.config/opencode/{skills,plugins,commands}/`.
+  - **Skills** drop into `~/.claude/skills/agy-{web-search,route-research}/SKILL.md`
+    — opencode already reads this directory (see opencode `packages/opencode/src/skill/index.ts:21-25`),
+    so the existing skill install covers both agents without duplication.
+  - **Hook plugin** (`opencode-plugin/agy-route.js`, ~30 LOC) drops into
+    `~/.config/opencode/plugins/`. Implements `tool.execute.before` on the
+    `websearch` tool; throws the same denial message as the Python
+    `agy-route-hook-pretooluse`, so Claude's recovery behavior is
+    identical between Claude Code and opencode.
+  - **Slash commands** generated from `tools/bodies/<name>.md` →
+    `~/.config/opencode/commands/agy-{search,research}.md`.
+- **`tools/command_specs.py` + `tools/generate_commands.py`** — single
+  source of truth per command (description, body, opencode-only fields),
+  rendered to both Claude Code (`commands/<name>.md`) and opencode
+  (`opencode-commands/<name>.md`) outputs. Adding a third agent
+  framework = add one new renderer; no per-command duplication.
+- **Target registry** (`src/agy_route/targets/opencode.py`) — implements
+  the existing Target ABC for opencode. Opencode target's
+  `install_skill` shares the Claude target's install dir
+  (`~/.claude/skills/`); opencode target's `install_plugin` +
+  `install_commands` are opencode-specific; `uninstall_hook` removes
+  the opencode plugin file + all `agy-*.md` commands.
+- **Install data** (`src/agy_route/install_data/`) extended with
+  `opencode-plugin/agy-route.js`, `opencode-commands/agy-search.md`,
+  `opencode-commands/agy-research.md`. All three shipped inside the
+  wheel via `pyproject.toml` `force-include`.
+- **`commands/*.md`** regenerated; each file carries a
+  `# auto-generated` header comment.
+- **`opencode-commands/*.md`** new generated outputs.
+
+**Notes**
+
+- Skill installs for both targets share `~/.claude/skills/` — one
+  install covers both agents.
+- No `opencode.jsonc` JSON-merge needed: opencode auto-loads `.js`
+  files from the plugins dir and `.md` files from the commands dir
+  on startup.
+- The opencode plugin JS uses the same denial semantics as the Python
+  Claude hook: `throw new Error(...)` from `tool.execute.before`
+  causes opencode to surface the message as the tool-call error,
+  which the model reads and recovers from.
+
 ## 0.3.0 — 2026-07-29
 
 **Added**
