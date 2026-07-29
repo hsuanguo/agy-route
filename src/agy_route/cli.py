@@ -176,7 +176,15 @@ def resolve_model(type_name: str, override: Optional[str]) -> ResolvedModel:
 # ---------- agy invocation ----------------------------------------------------
 
 
-def _build_full_prompt(policy_text: str, user_prompt: str) -> str:
+def _build_full_prompt(policy_text: str, user_prompt: str, prefix: str = "") -> str:
+    if prefix:
+        return (
+            "You are running with the following tool policy.\n\n"
+            "--- begin policy ---\n"
+            f"{policy_text}\n"
+            "--- end policy ---\n\n"
+            f"{prefix}{user_prompt}"
+        )
     return (
         "You are running with the following tool policy.\n\n"
         "--- begin policy ---\n"
@@ -449,6 +457,98 @@ def search_cmd(
     )
 
 
+# ---------- Deep-research sub-group (fetch + quote primitives) ----------------
+#
+# These are the two agy-backed primitives from the deep-research recipe:
+#   fetch — fan-out sub-question search, 5-8 bullets + URLs + dates
+#   quote — URL quote-verification for load-bearing claims
+# Plan / verify / synthesize are Claude reasoning, not CLI commands.
+
+research_app = typer.Typer(
+    name="research",
+    help=(
+        "Deep-research primitives (fetch + quote). Used by the "
+        "/agy-research slash command and the agy-route-research skill."
+    ),
+    no_args_is_help=True,
+    add_completion=False,
+)
+app.add_typer(research_app)
+
+
+@research_app.command("fetch")
+def research_fetch_cmd(
+    sub_question: Optional[str] = typer.Argument(
+        None,
+        show_default=False,
+        help="Sub-question to research. If omitted, the prompt is read from stdin.",
+    ),
+    timeout: int = typer.Option(300, "--timeout"),
+    stdin_timeout: int = typer.Option(30, "--stdin-timeout"),
+    model: Optional[str] = typer.Option(None, "--model"),
+    log_file: Optional[Path] = typer.Option(None, "--log-file"),
+    as_json: bool = typer.Option(False, "--json"),
+    verbose: bool = typer.Option(False, "--verbose"),
+) -> None:
+    """Fan-out sub-question search via agy. Returns 5-8 bullet findings + URLs + dates.
+
+    Uses the same search-only tool policy as `agy-route search`; the only
+    difference is the wrapped prompt that asks for compact bulleted output.
+    """
+    prompt_prefix = (
+        "Use web search for the following sub-question. Return 5-8 bullet "
+        "findings, each with the exact source URL and publication date. "
+        "Output ONLY the findings, URLs, and dates — no synthesis, no "
+        "narrative, no commentary.\n\n"
+        "Sub-question: "
+    )
+    _run(
+        type_name="search",
+        prompt=sub_question,
+        timeout=timeout,
+        stdin_timeout=stdin_timeout,
+        model=model,
+        log_file=log_file,
+        as_json=as_json,
+        verbose=verbose,
+        prompt_prefix=prompt_prefix,
+    )
+
+
+@research_app.command("quote")
+def research_quote_cmd(
+    claim: str = typer.Argument(..., help="The claim to verify (quoted)."),
+    url: str = typer.Argument(..., help="The URL to fetch + quote from."),
+    timeout: int = typer.Option(300, "--timeout"),
+    model: Optional[str] = typer.Option(None, "--model"),
+    log_file: Optional[Path] = typer.Option(None, "--log-file"),
+    as_json: bool = typer.Option(False, "--json"),
+    verbose: bool = typer.Option(False, "--verbose"),
+) -> None:
+    """Open <url> and quote the verbatim sentence(s) supporting <claim>.
+
+    Returns the exact quoted text (or `NOT SUPPORTED` if the page doesn't
+    actually back the claim). Uses the same search-only tool policy;
+    forces the model to use `read_url` / `read_url_content` rather than
+    falling back to parametric knowledge.
+    """
+    prompt = (
+        f"Open {url} and quote the exact sentence(s) supporting: "
+        f"'{claim}'. If the page does not support it, reply NOT SUPPORTED."
+    )
+    _run(
+        type_name="search",
+        prompt=prompt,
+        timeout=timeout,
+        stdin_timeout=30,
+        model=model,
+        log_file=log_file,
+        as_json=as_json,
+        verbose=verbose,
+        prompt_prefix="",  # prompt already self-contained
+    )
+
+
 # ---------- The shared run path -----------------------------------------------
 
 
@@ -462,6 +562,7 @@ def _run(
     log_file: Optional[Path],
     as_json: bool,
     verbose: bool,
+    prompt_prefix: str = "",
 ) -> None:
     def log(msg: str) -> None:
         if verbose:
@@ -576,7 +677,7 @@ def _run(
             log_file=log_file,
         )
         return
-    full_prompt = _build_full_prompt(policy_text, prompt)
+    full_prompt = _build_full_prompt(policy_text, prompt, prefix=prompt_prefix)
 
     # Invoke agy.
     pass_model = (

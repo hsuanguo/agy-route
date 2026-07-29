@@ -37,6 +37,11 @@ research, …) become subcommands of the same `agy-route` binary.
 - A **`/agy-search "<query>"` slash command** for an explicit one-shot search
   (only registered when you install via the marketplace path; see the callout
   above).
+- **Deep-research recipe** (`agy-route research fetch` + `agy-route research
+  quote` + `/agy-research <topic>` slash command + `agy-route-research`
+  skill): Claude plans + verifies + synthesizes, agy does the cheap
+  grounded legwork. Cited report with per-claim verification status.
+  See the *Deep research* section below.
 - The **`agy-route` Python wrapper** (`src/agy_route/cli.py`, distributed via
   `uv tool install`) that:
   - locks the search down to a `search_web`-only tool policy,
@@ -115,8 +120,12 @@ Once the plugin is enabled, **every `WebSearch` is automatically routed through
 ### From any shell
 
 ```bash
-# Inline
+# Single-shot search
 agy-route search "latest Antigravity CLI release"
+
+# Deep-research primitives
+agy-route research fetch "<sub-question>"      # fan-out: 5-8 bullets + URLs + dates
+agy-route research quote "<claim>" "<url>"     # URL-quote: verbatim supporting text or NOT SUPPORTED
 
 # Piped prompt (preferred for long queries)
 echo "What changed in Python 3.13 between rc1 and final?" | agy-route search
@@ -125,6 +134,20 @@ echo "What changed in Python 3.13 between rc1 and final?" | agy-route search
 echo "query" | agy-route search --json
 # → {"success":true,"model_used":"...","type":"search","duration_seconds":9,"response":"..."}
 ```
+
+### Deep research
+
+For multi-source research ("research X", "investigate Y", "find me sources
+for Z"), use the `/agy-research <topic>` slash command. It drives the
+deep-research recipe:
+
+1. **Plan** (Claude): decompose into 3–6 sub-questions; flag load-bearing claims.
+2. **Fan-out fetch** (parallel `agy-route research fetch`): 5–8 bullets per sub-question with URLs + dates.
+3. **URL-quote** (parallel `agy-route research quote "<claim>" "<url>"`): agy opens the URL and quotes the verbatim sentence(s) supporting each claim (or `NOT SUPPORTED`).
+4. **Verify** (Claude): each load-bearing claim needs ≥2 independent quoted sources → verified or unverified.
+5. **Synthesize** (Claude): write the cited report with verified findings + an explicit unverified section.
+
+Steps 1, 4, 5 are Claude reasoning (no CLI). Steps 2, 3 are agy calls.
 
 ### Re-install after a `git pull`
 

@@ -12,6 +12,13 @@
       "source": "./",
       "category": "search",
       "keywords": ["agy", "antigravity", "gemini", "web-search", "grounded-search"]
+    },
+    {
+      "name": "agy-route-research",
+      "description": "Multi-source deep research via agy-route: Claude orchestrates plan + fan-out fetch + URL-quote verification + cited synthesis. The /agy-research slash command drives the recipe end-to-end.",
+      "source": "./",
+      "category": "research",
+      "keywords": ["agy", "research", "deep-research", "citations", "verify", "grounded-search"]
     }
   ]
 }
