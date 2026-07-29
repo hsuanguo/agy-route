@@ -7,13 +7,14 @@
   </picture>
 </p>
 
-A Claude Code plugin (and CLI) that routes work through the **`agy` CLI**
-(Google Antigravity CLI — Gemini under the hood). Ships two surfaces today:
+A Claude Code **and** opencode plugin (and CLI) that routes work through the
+**`agy` CLI** (Google Antigravity CLI — Gemini under the hood). Ships two
+surfaces today:
 
 - **`agy-web-search`** — single-shot grounded web search. A `PreToolUse` hook
-  intercepts Claude's `WebSearch` tool calls and reroutes them to
-  `agy-route search`, which uses agy's `search_web` with real source
-  citations.
+  (Claude Code) or JS plugin (opencode) intercepts the agent's `websearch`
+  tool calls and reroutes them to `agy-route search`, which uses agy's
+  `search_web` with real source citations.
 - **`agy-route-research`** — multi-source deep research. Claude plans,
   fans out sub-questions via `agy-route research fetch`, verifies each
   load-bearing claim by URL-quote via `agy-route research quote`, then
@@ -21,7 +22,9 @@ A Claude Code plugin (and CLI) that routes work through the **`agy` CLI**
 
 Both surfaces use the same `agy-route` binary (`uv tool install`), the
 same search-only tool policy (no file writes, no shell — `search_web` +
-`read_url` only), and the same exit-code conventions.
+`read_url` only), and the same exit-code conventions. `agy-route install`
+is target-aware: it drops skills + hooks + commands into whichever agent
+you pick (`claude` or `opencode`).
 
 This is the first plugin in the [`agy-route`](.) repo. Future plugins
 (review, code, …) become subcommands of the same `agy-route` binary.
@@ -30,49 +33,11 @@ This is the first plugin in the [`agy-route`](.) repo. Future plugins
 > The repo ships a `.claude-plugin/marketplace.json` so anyone who *wants*
 > the marketplace path can `/plugin marketplace add
 > https://github.com/hsuanguo/agy-route`, but it's **opt-in**. The
-> recommended install is the **lite path** below — two commands, no
-> marketplace, no plugin registry. Pick the marketplace path only if you want
-> the `/agy-search` and `/agy-research` slash commands, versioned
+> recommended install is the **lite path** below — `uv tool install` +
+> `agy-route install --target <claude|opencode>`. Pick the marketplace
+> path only if you want the `/agy-search` and `/agy-research` slash
+> commands registered as Claude Code pluglets, versioned
 > `/plugin update`, or to appear in `/plugin marketplace browse`.
-
-## What you get
-
-**Web search surface (`agy-web-search` plugin)**
-
-- **`PreToolUse` hook on `WebSearch`** — every Claude-initiated web search is
-  denied with a reason that tells the model to call `agy-route search` via the
-  Bash tool instead. Deterministic: Claude never needs to remember to prefer
-  `agy-route`.
-- A slim **`agy-web-search` skill** that documents `agy-route` for Claude —
-  useful when the hook is disabled, or when Claude wants to call `agy-route`
-  directly for queries that wouldn't trigger `WebSearch`.
-- A **`/agy-search "<query>"` slash command** for an explicit one-shot search
-  (only registered when you install via the marketplace path; see the callout
-  above).
-
-**Deep-research surface (`agy-route-research` plugin)**
-
-- `agy-route research fetch "<sub-question>"` — fan-out sub-question search
-  (5–8 bullets per call with URLs + dates). Run in parallel via Bash.
-- `agy-route research quote "<claim>" "<url>"` — opens the URL and quotes
-  the verbatim supporting sentence(s) (or `NOT SUPPORTED`). Run in parallel
-  per (claim, URL) pair.
-- `agy-route-research` skill — Claude-orchestrated deep-research recipe
-  (plan → fan-out → URL-quote → adversarial verify → synthesize).
-- `/agy-research <topic>` slash command — drives the full recipe from
-  inside one Bash session.
-
-**Shared plumbing**
-
-- The **`agy-route` Python wrapper** (`src/agy_route/cli.py`, distributed via
-  `uv tool install`) that:
-  - locks the search down to a `search_web`-only tool policy,
-  - auto-selects the latest `gemini-*-flash-high` from `agy models`,
-  - classifies failures (`quota` · `auth` · `timeout` · `permission-denied` · …)
-    with stable exit codes.
-
-No MCP server required. Skills + commands + a thin Python wrapper + a Claude Code
-hook.
 
 ## Install
 
@@ -202,8 +167,9 @@ uv tool install --force --from git+https://github.com/hsuanguo/agy-route agy-rou
 
 ```bash
 # Reverse the lite install:
-agy-route uninstall                # removes SKILL.md + hook for every registered target
-agy-route uninstall --target claude  # restrict to one target
+agy-route uninstall                # removes SKILL.md + hook/plugin for every registered target
+agy-route uninstall --target claude    # restrict to one target
+agy-route uninstall --target opencode  # restrict to one target
 uv tool uninstall agy-route
 
 # Reverse the marketplace install (if you used it):
@@ -220,26 +186,41 @@ assets/
   icon.svg                    # icon only (favicon / social-card)
 tools/
   generate_logo.py            # regenerates assets/*.svg from the letterforms
+  generate_commands.py        # regenerates commands/* + opencode-commands/* from specs
+  command_specs.py            # source of truth for commands
+  bodies/{agy-search,agy-research}.md   # bodies for the commands
 .claude-plugin/
   plugin.json                 # plugin manifest (skills + commands + hooks)
   marketplace.json            # marketplace entry (for /plugin marketplace add — opt-in)
 hooks/
   hooks.json                  # PreToolUse hook wiring (WebSearch → agy-route)
 commands/
-  agy-search.md               # /agy-search <query> slash command (marketplace path only)
+  agy-search.md               # generated from tools/bodies/
+  agy-research.md             # generated from tools/bodies/
+opencode-plugin/
+  agy-route.js                # opencode plugin (~30 LOC)
+opencode-commands/
+  agy-search.md               # generated from tools/bodies/ (opencode-flavored frontmatter)
+  agy-research.md             # generated from tools/bodies/
 skills/
   agy-web-search/SKILL.md     # intent-surface skill (hook is the tool-call surface)
+  agy-route-research/SKILL.md # deep-research skill
 src/agy_route/
-  cli.py                      # Typer app: search / types / targets / install / uninstall
+  cli.py                      # Typer app: search / research / types / targets / install / uninstall
   install.py                  # orchestrator for `agy-route install/uninstall`
   install_data/
-    skill.md                  # mirror of skills/agy-web-search/SKILL.md (for lite install)
-    hooks.json                # mirror of hooks/hooks.json (for lite install)
+    skill.md                  # mirror of skills/agy-web-search/SKILL.md
+    skill-research.md         # mirror of skills/agy-route-research/SKILL.md
+    hooks.json                # mirror of hooks/hooks.json (Claude PreToolUse hook config)
+    opencode-plugin/agy-route.js
+    opencode-commands/agy-search.md
+    opencode-commands/agy-research.md
   targets/
     base.py                   # Target ABC
     claude.py                 # Claude Code target (~/.claude/ + settings.json)
+    opencode.py               # opencode target (~/.config/opencode/{plugins,commands}/)
   hooks/
-    pretooluse.py             # the hook binary — `agy-route-hook-pretooluse`
+    pretooluse.py             # the Claude hook binary — `agy-route-hook-pretooluse`
   policies/
     search.md                 # tool policy: search_web + read_url only
 pyproject.toml                # PEP 621 metadata + 2 console script entries

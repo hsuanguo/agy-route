@@ -5,9 +5,11 @@ from typing import Iterable
 
 from agy_route.targets.base import Target
 from agy_route.targets.claude import ClaudeTarget
+from agy_route.targets.opencode import OpenCodeTarget
 
 _REGISTRY: dict[str, type[Target]] = {
     "claude": ClaudeTarget,
+    "opencode": OpenCodeTarget,
 }
 
 
