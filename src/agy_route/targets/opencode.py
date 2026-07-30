@@ -5,6 +5,7 @@ import shutil
 from importlib import resources
 from pathlib import Path
 
+from agy_route.specs import COMMAND_SPECS
 from agy_route.targets.base import Target, TargetInstallResult
 
 
@@ -67,7 +68,7 @@ class OpenCodeTarget(Target):
         if not skill_only:
             # Install plugin JS
             plugin_bytes = (
-                resources.files("agy_route.opencode_plugin")
+                resources.files("agy_route.plugins.opencode")
                 .joinpath("agy-route.js")
                 .read_bytes()
             )
@@ -85,19 +86,19 @@ class OpenCodeTarget(Target):
             else:
                 plugin_changed = not plugin_same
 
-            # Install opencode commands
-            cmd_dir_res = resources.files("agy_route.opencode_commands")
+            # Dynamically render and install opencode commands
             dst_cmd_dir = self.config_dir / "commands"
             if not dry_run:
                 dst_cmd_dir.mkdir(parents=True, exist_ok=True)
 
-            for entry in cmd_dir_res.iterdir():
-                if entry.name.endswith(".md"):
-                    dst_cmd = dst_cmd_dir / entry.name
-                    cmd_bytes = entry.read_bytes()
-                    if not dry_run:
-                        dst_cmd.write_bytes(cmd_bytes)
-                    commands_installed.append(str(dst_cmd))
+            for spec in COMMAND_SPECS:
+                dst_cmd = dst_cmd_dir / f"{spec.name}.md"
+                content = spec.render_opencode()
+                same_content = dst_cmd.is_file() and dst_cmd.read_text() == content
+                if not dry_run:
+                    if not same_content:
+                        dst_cmd.write_text(content)
+                commands_installed.append(str(dst_cmd))
 
         return TargetInstallResult(
             target=self.name,
