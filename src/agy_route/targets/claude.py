@@ -4,10 +4,11 @@ from __future__ import annotations
 import json
 import os
 import shutil
+from importlib import resources
 from pathlib import Path
 from typing import Any
 
-from agy_route.targets.base import Target
+from agy_route.targets.base import Target, TargetInstallResult
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -50,25 +51,7 @@ class ClaudeTarget(Target):
         self.hook_config_path = self.config_dir / "settings.json"
 
     def is_present(self) -> bool:
-        # Claude Code is "present" as long as the user's home dir is set;
-        # we always create the config dir on first install.
         return self.home.is_dir()
-
-    def install_skill(self, src_skill_md: Path, skill_name: str = "agy-web-search") -> Path:
-        dst_dir = self.config_dir / self.skill_subdir / skill_name
-        dst = dst_dir / "SKILL.md"
-        dst_dir.mkdir(parents=True, exist_ok=True)
-        if dst.is_file() and dst.read_text() == src_skill_md.read_text():
-            return dst  # idempotent
-        shutil.copy2(src_skill_md, dst)
-        return dst
-
-    def uninstall_skill(self, skill_name: str = "agy-web-search") -> bool:
-        dst_dir = self.config_dir / self.skill_subdir / skill_name
-        if not dst_dir.is_dir():
-            return False
-        shutil.rmtree(dst_dir)
-        return True
 
     def _tag(self, entry: dict[str, Any], namespace: str) -> None:
         """Stamp our namespace on a hook entry so uninstall can find it."""
@@ -83,42 +66,115 @@ class ClaudeTarget(Target):
             and entry["_meta"].get("agy_route") == namespace
         ]
 
-    def install_hook(self, hook_config: dict, namespace: str = "agy-route") -> None:
-        self.config_dir.mkdir(parents=True, exist_ok=True)
-        current = _read_json(self.hook_config_path)
+    def install_skill_content(self, skill_name: str, content: str, dry_run: bool = False) -> tuple[Path, bool]:
+        dst_dir = self.config_dir / self.skill_subdir / skill_name
+        dst = dst_dir / "SKILL.md"
+        same_content = dst.is_file() and dst.read_text() == content
+        if not dry_run:
+            dst_dir.mkdir(parents=True, exist_ok=True)
+            if not same_content:
+                dst.write_text(content)
+        return dst, not same_content
 
-        # Build the new entry from the packaged hook_config (always
-        # a list of dicts per Claude Code's schema).
-        new_entries = []
-        for raw in hook_config.get("hooks", {}).get("PreToolUse", []):
-            entry = json.loads(json.dumps(raw))  # deep copy
-            self._tag(entry, namespace)
-            new_entries.append(entry)
+    def install_target(
+        self,
+        *,
+        skill_only: bool = False,
+        hook_only: bool = False,
+        dry_run: bool = False,
+        skills: tuple[str, ...] = ("agy-web-search", "agy-route-research"),
+        namespace: str = "agy-route",
+    ) -> TargetInstallResult:
+        if not self.is_present():
+            return TargetInstallResult(
+                target=self.name,
+                skill_installed=False,
+                skill_path=None,
+                hook_installed=False,
+                plugin_installed=False,
+                message=f"target {self.name!r} not present on this host",
+            )
 
-        existing_hooks = current.setdefault("hooks", {})
-        existing_pretooluse = existing_hooks.setdefault("PreToolUse", [])
-        if not isinstance(existing_pretooluse, list):
-            existing_pretooluse = []
-            existing_hooks["PreToolUse"] = existing_pretooluse
+        skill_paths: list[str] = []
+        skill_changed_any = False
+        hook_installed = False
+        hook_changed = False
 
-        # Drop our previous entries, then append the new ones. Idempotent.
-        for i in reversed(self._our_entries(existing_pretooluse, namespace)):
-            del existing_pretooluse[i]
-        existing_pretooluse.extend(new_entries)
+        if not hook_only:
+            for skill_name in skills:
+                content = (
+                    resources.files("agy_route.skills")
+                    .joinpath(skill_name, "SKILL.md")
+                    .read_text()
+                )
+                dst, changed = self.install_skill_content(skill_name, content, dry_run=dry_run)
+                skill_paths.append(str(dst))
+                skill_changed_any = skill_changed_any or changed
 
-        _backup(self.hook_config_path)
-        _write_json(self.hook_config_path, current)
+        if not skill_only:
+            hook_config_text = (
+                resources.files("agy_route.hooks")
+                .joinpath("hooks.json")
+                .read_text()
+            )
+            hook_config = json.loads(hook_config_text)
+            hook_installed = True
+            if not dry_run:
+                self.config_dir.mkdir(parents=True, exist_ok=True)
+                current = _read_json(self.hook_config_path)
+                new_entries = []
+                for raw in hook_config.get("hooks", {}).get("PreToolUse", []):
+                    entry = json.loads(json.dumps(raw))
+                    self._tag(entry, namespace)
+                    new_entries.append(entry)
 
-    def uninstall_hook(self, namespace: str = "agy-route") -> bool:
-        if not self.hook_config_path.is_file():
-            return False
-        current = _read_json(self.hook_config_path)
-        hooks = current.get("hooks") or {}
-        pretooluse = hooks.get("PreToolUse") or []
-        if not isinstance(pretooluse, list) or not self._our_entries(pretooluse, namespace):
-            return False
-        for i in reversed(self._our_entries(pretooluse, namespace)):
-            del pretooluse[i]
-        _backup(self.hook_config_path)
-        _write_json(self.hook_config_path, current)
-        return True
+                existing_hooks = current.setdefault("hooks", {})
+                existing_pretooluse = existing_hooks.setdefault("PreToolUse", [])
+                if not isinstance(existing_pretooluse, list):
+                    existing_pretooluse = []
+                    existing_hooks["PreToolUse"] = existing_pretooluse
+
+                for i in reversed(self._our_entries(existing_pretooluse, namespace)):
+                    del existing_pretooluse[i]
+                existing_pretooluse.extend(new_entries)
+
+                _backup(self.hook_config_path)
+                _write_json(self.hook_config_path, current)
+                hook_changed = True
+
+        return TargetInstallResult(
+            target=self.name,
+            skill_installed=bool(skill_paths),
+            skill_path="; ".join(skill_paths) if skill_paths else None,
+            hook_installed=hook_installed,
+            plugin_installed=False,
+            skill_changed=skill_changed_any,
+            hook_changed=hook_changed,
+        )
+
+    def uninstall_target(
+        self,
+        *,
+        skills: tuple[str, ...] = ("agy-web-search", "agy-route-research"),
+        namespace: str = "agy-route",
+    ) -> tuple[bool, bool]:
+        skill_removed_count = 0
+        for skill_name in skills:
+            dst_dir = self.config_dir / self.skill_subdir / skill_name
+            if dst_dir.is_dir():
+                shutil.rmtree(dst_dir)
+                skill_removed_count += 1
+
+        hook_removed = False
+        if self.hook_config_path.is_file():
+            current = _read_json(self.hook_config_path)
+            hooks = current.get("hooks") or {}
+            pretooluse = hooks.get("PreToolUse") or []
+            if isinstance(pretooluse, list) and self._our_entries(pretooluse, namespace):
+                for i in reversed(self._our_entries(pretooluse, namespace)):
+                    del pretooluse[i]
+                _backup(self.hook_config_path)
+                _write_json(self.hook_config_path, current)
+                hook_removed = True
+
+        return bool(skill_removed_count), hook_removed

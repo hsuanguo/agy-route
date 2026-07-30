@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from agy_route.targets.base import Target
+from agy_route.targets.base import Target, TargetInstallResult
 from agy_route.targets.claude import ClaudeTarget
 from agy_route.targets.opencode import OpenCodeTarget
 
@@ -26,4 +26,4 @@ def all_targets() -> Iterable[Target]:
     return [cls() for cls in _REGISTRY.values()]
 
 
-__all__ = ["Target", "ClaudeTarget", "get", "all_targets"]
+__all__ = ["Target", "TargetInstallResult", "ClaudeTarget", "OpenCodeTarget", "get", "all_targets"]
