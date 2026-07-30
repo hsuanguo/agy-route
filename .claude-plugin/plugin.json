@@ -20,9 +20,5 @@
     "./skills/agy-web-search",
     "./skills/agy-route-research"
   ],
-  "commands": [
-    "./commands/agy-search.md",
-    "./commands/agy-research.md"
-  ],
-  "hooks": "./hooks/hooks.json"
+  "hooks": "./plugins/claude/hooks.json"
 }
