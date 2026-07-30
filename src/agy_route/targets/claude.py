@@ -1,4 +1,4 @@
-"""Claude Code target — drop skills into ~/.claude/skills/, merge hooks into ~/.claude/settings.json."""
+"""Claude Code target — drop skills into ~/.claude/skills/, commands into ~/.claude/commands/, merge hooks into ~/.claude/settings.json."""
 from __future__ import annotations
 
 import json
@@ -8,6 +8,7 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
+from agy_route.specs import COMMAND_SPECS
 from agy_route.targets.base import Target, TargetInstallResult
 
 
@@ -41,7 +42,7 @@ def _backup(path: Path) -> Path | None:
 
 class ClaudeTarget(Target):
     name = "claude"
-    description = "Claude Code — ~/.claude/skills/ + ~/.claude/settings.json"
+    description = "Claude Code — ~/.claude/{skills,commands}/ + ~/.claude/settings.json"
     skill_subdir = "skills"
     hook_config_format = "json"
 
@@ -99,6 +100,7 @@ class ClaudeTarget(Target):
         skill_changed_any = False
         hook_installed = False
         hook_changed = False
+        commands_installed: list[str] = []
 
         if not hook_only:
             for skill_name in skills:
@@ -111,9 +113,23 @@ class ClaudeTarget(Target):
                 skill_paths.append(str(dst))
                 skill_changed_any = skill_changed_any or changed
 
+            # Install dynamically rendered Claude slash commands
+            dst_cmd_dir = self.config_dir / "commands"
+            if not dry_run:
+                dst_cmd_dir.mkdir(parents=True, exist_ok=True)
+
+            for spec in COMMAND_SPECS:
+                dst_cmd = dst_cmd_dir / f"{spec.name}.md"
+                content = spec.render_claude()
+                same_content = dst_cmd.is_file() and dst_cmd.read_text() == content
+                if not dry_run:
+                    if not same_content:
+                        dst_cmd.write_text(content)
+                commands_installed.append(str(dst_cmd))
+
         if not skill_only:
             hook_config_text = (
-                resources.files("agy_route.hooks")
+                resources.files("agy_route.plugins.claude")
                 .joinpath("hooks.json")
                 .read_text()
             )
@@ -148,6 +164,7 @@ class ClaudeTarget(Target):
             skill_path="; ".join(skill_paths) if skill_paths else None,
             hook_installed=hook_installed,
             plugin_installed=False,
+            commands_installed=commands_installed,
             skill_changed=skill_changed_any,
             hook_changed=hook_changed,
         )
@@ -164,6 +181,15 @@ class ClaudeTarget(Target):
             if dst_dir.is_dir():
                 shutil.rmtree(dst_dir)
                 skill_removed_count += 1
+
+        cmds_dir = self.config_dir / "commands"
+        if cmds_dir.is_dir():
+            for f in cmds_dir.glob("agy-*.md"):
+                f.unlink()
+            try:
+                cmds_dir.rmdir()
+            except OSError:
+                pass
 
         hook_removed = False
         if self.hook_config_path.is_file():

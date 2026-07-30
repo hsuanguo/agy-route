@@ -31,14 +31,10 @@ packages = ["src/agy_route"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "skills"                                                            = "agy_route/skills"
-"hooks"                                                             = "agy_route/hooks"
-"commands"                                                          = "agy_route/commands"
-"opencode-commands"                                                 = "agy_route/opencode_commands"
-"opencode-plugin"                                                   = "agy_route/opencode_plugin"
+"plugins"                                                           = "agy_route/plugins"
 "config"                                                            = "agy_route/config"
 ".claude-plugin"                                                    = "agy_route/claude_plugin"
 "README.md"                                                         = "agy_route/README.md"
 "CHANGELOG.md"                                                      = "agy_route/CHANGELOG.md"
 "LICENSE"                                                           = "agy_route/LICENSE"
 "pyproject.toml"                                                    = "agy_route/pyproject.toml"
-

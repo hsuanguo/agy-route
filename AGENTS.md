@@ -19,15 +19,12 @@ This document serves as the guide for AI coding assistants (agents) operating on
 ```
 agy-route/
 ├── assets/                          # SVG brand assets (logo, icon)
-├── tools/                           # Code & asset generator scripts (Source of Truth)
-│   ├── command_specs.py             # Declarative specs for slash commands
-│   ├── generate_commands.py         # Generates commands/ & opencode-commands/ from specs (--check supported)
-│   ├── generate_logo.py             # Regenerates SVG brand assets from letterforms
-│   └── bodies/                      # Markdown command body templates (agy-search, agy-research)
-├── commands/                        # Generated Claude Code slash commands
-├── opencode-commands/               # Generated opencode slash commands (richer frontmatter)
-├── opencode-plugin/                 # JS plugin for opencode (~30 LOC hook handler)
-├── hooks/                           # Hook configuration files (Claude Code PreToolUse)
+├── tools/                           # Code & asset generator scripts
+│   ├── generate_commands.py         # Validates command specs in src/agy_route/specs/ (--check supported)
+│   └── generate_logo.py             # Regenerates SVG brand assets from letterforms
+├── plugins/                         # Target plugin assets
+│   ├── claude/                      # Claude Code PreToolUse hook configuration (hooks.json)
+│   └── opencode/                    # opencode JS plugin (agy-route.js)
 ├── skills/                          # Agent skill definitions (SKILL.md)
 ├── config/                          # Configuration files and policies
 │   └── policies/search.md           # Tool policy limiting agy to search_web & read_url
@@ -36,6 +33,9 @@ agy-route/
 │   ├── install.py                   # Orchestrator for target installation & uninstallation
 │   ├── core/                        # Service logic: models.py, policy.py, executor.py
 │   ├── hooks/                       # Executable hook handlers (e.g. pretooluse.py)
+│   ├── specs/                       # Single source of truth for slash commands & templates
+│   │   ├── command_specs.py         # CommandSpec dataclass + render_claude() / render_opencode()
+│   │   └── bodies/                  # Markdown command body templates (agy-search.md, agy-research.md)
 │   └── targets/                     # Polymorphic Target ABC abstractions (claude.py, opencode.py)
 └── pyproject.toml                   # Hatchling build configuration & console script entrypoints
 ```
@@ -44,15 +44,16 @@ agy-route/
 
 ## Core Architecture & Guidelines
 
-### 1. Single Source of Truth for Commands & Assets
-- **Do NOT edit files in `commands/` or `opencode-commands/` directly.**
-- Edit `tools/command_specs.py` and the markdown templates in `tools/bodies/`.
-- Run `python3 tools/generate_commands.py` to regenerate both Claude Code and opencode command markdowns simultaneously.
-- Verify generation via `python3 tools/generate_commands.py --check`.
+### 1. Single Source of Truth for Commands
+- **Generated command markdown files are NOT committed to Git.**
+- Command specifications live in `src/agy_route/specs/command_specs.py` and template bodies live in `src/agy_route/specs/bodies/`.
+- During `agy-route install --target <target>`, the target dynamically renders target-specific command markdown files on the fly into the target framework's user configuration directory:
+  - Claude Code: `render_claude()` $\rightarrow$ `~/.claude/commands/<name>.md`
+  - opencode: `render_opencode()` $\rightarrow$ `~/.config/opencode/commands/<name>.md`
 
-### 2. Single Source of Truth for Package Assets (No `install_data` Mirror)
-- Root asset directories (`skills/`, `hooks/`, `commands/`, `opencode-plugin/`, `opencode-commands/`, `config/`) ship directly inside the Python wheel via Hatchling's `force-include` in `pyproject.toml`.
-- Package code accesses these files dynamically via `importlib.resources.files("agy_route.<package>")`. Do NOT create duplicate copies in Python package subdirectories.
+### 2. Single Source of Truth for Package Assets
+- Root asset directories (`skills/`, `plugins/`, `config/`) ship directly inside the Python wheel via Hatchling's `force-include` in `pyproject.toml`.
+- Package code accesses these files dynamically via `importlib.resources.files("agy_route.<package>")`.
 
 ### 3. Target Abstraction Pattern (`Target` ABC)
 - All agent target integrations inherit from `Target` in `src/agy_route/targets/base.py`.
@@ -73,7 +74,7 @@ agy-route/
 
 ### Environment Setup & Local Installation
 ```bash
-# Install package locally in editable mode or as a uv tool
+# Install package locally as a uv tool
 uv tool install --force .
 
 # Verify CLI commands are accessible
@@ -81,13 +82,10 @@ agy-route types
 agy-route search "Antigravity CLI"
 ```
 
-### Command Generation & Asset Maintenance
+### Command Specs & Asset Maintenance
 ```bash
-# Check if slash commands are up to date
+# Validate slash command specs in src/agy_route/specs/
 python3 tools/generate_commands.py --check
-
-# Regenerate slash commands for all target frameworks
-python3 tools/generate_commands.py
 
 # Regenerate brand logo and icon SVGs
 python3 tools/generate_logo.py
@@ -103,7 +101,7 @@ agy-route install --target claude --dry-run
 agy-route install --target opencode --dry-run
 
 # Verify JS plugin syntax (for opencode target)
-node --check opencode-plugin/agy-route.js
+node --check plugins/opencode/agy-route.js
 ```
 
 ---

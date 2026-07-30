@@ -1,3 +1,10 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Generated slash commands (rendered dynamically by agy-route CLI)
+commands/
+opencode-commands/
