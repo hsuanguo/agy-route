@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
-  <title id="title">agy-route icon</title>
+  <title id="title">AGY-ROUTE icon</title>
   <desc id="desc">A routing diagram: input source → junction → two branches ending at destination nodes.</desc>
   <defs>
     <style type="text/css"><![CDATA[

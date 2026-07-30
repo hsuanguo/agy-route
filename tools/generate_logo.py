@@ -1,113 +1,103 @@
 #!/usr/bin/env python3
-"""Generate the agy-route logo (assets/logo.svg + assets/icon.svg).
+"""Generate the AGY-ROUTE logo (assets/logo.svg + assets/icon.svg).
 
 Style:
 - Icon: clean routing diagram — input source node, junction node,
   two output branches.
-- Wordmark: pixelized block letterforms ("agy-route"), matching the act-cli
-  pixel art aesthetic. Each character is defined on a pixel grid and rendered
-  with rounded pixel blocks.
+- Wordmark: uppercase pixelized block letterforms ("AGY-ROUTE"), matching the
+  act-cli pixel art aesthetic. Centered lockup within 640x128 canvas.
 
 Run from the repo root:
 
     python3 tools/generate_logo.py
 
 Writes:
-    assets/logo.svg   # horizontal lockup, 640×128
+    assets/logo.svg   # horizontal lockup, 640×128 (centered)
     assets/icon.svg   # icon only, 512×512
 """
 from __future__ import annotations
 
 from pathlib import Path
 
-# Wordmark positioning inside 640x128 viewBox
-WORDMARK_BOX_W = 460
-WORDMARK_BOX_H = 100
-WORDMARK_BOX_X = 152
-WORDMARK_BOX_Y = 14
-
-# Icon placement matches act-cli layout geometry
-ICON_X, ICON_Y, ICON_W, ICON_H = 24, 8, 112, 112
+# Icon canvas geometry
+ICON_W, ICON_H = 112, 112
 ICON_STROKE = 14
 
-# Pixelized letterforms defined on an 8-row grid (0 to 7)
+# Pixelized UPPERCASE letterforms defined on a 7-row grid (0 to 6)
 # 1 = filled pixel block, 0 = empty
 PIXEL_MAP: dict[str, list[list[int]]] = {
-    "a": [
-        [0, 1, 1, 0],
-        [1, 0, 0, 1],
-        [1, 1, 1, 1],
-        [1, 0, 0, 1],
-        [1, 0, 0, 1],
-    ],  # rows 2..6
-    "g": [
-        [0, 1, 1, 1],
-        [1, 0, 0, 1],
-        [0, 1, 1, 1],
-        [0, 0, 0, 1],
-        [0, 0, 0, 1],
-        [1, 1, 1, 0],
-    ],  # rows 2..7 (descender)
-    "y": [
-        [1, 0, 0, 1],
-        [1, 0, 0, 1],
-        [0, 1, 1, 1],
-        [0, 0, 0, 1],
-        [0, 0, 0, 1],
-        [1, 1, 1, 0],
-    ],  # rows 2..7 (descender)
+    "A": [
+        [0, 1, 1, 1, 0],
+        [1, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1],
+    ],
+    "G": [
+        [0, 1, 1, 1, 0],
+        [1, 0, 0, 0, 0],
+        [1, 0, 1, 1, 1],
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1],
+        [0, 1, 1, 1, 0],
+    ],
+    "Y": [
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1],
+        [0, 1, 0, 1, 0],
+        [0, 0, 1, 0, 0],
+        [0, 0, 1, 0, 0],
+        [0, 0, 1, 0, 0],
+    ],
     "-": [
+        [0, 0, 0],
+        [0, 0, 0],
         [1, 1, 1],
-    ],  # row 4
-    "r": [
-        [1, 1, 1, 0],
-        [1, 0, 0, 1],
-        [1, 1, 1, 0],
-        [1, 0, 1, 0],
-        [1, 0, 0, 1],
-    ],  # rows 2..6
-    "o": [
-        [0, 1, 1, 0],
-        [1, 0, 0, 1],
-        [1, 0, 0, 1],
-        [1, 0, 0, 1],
-        [0, 1, 1, 0],
-    ],  # rows 2..6
-    "u": [
-        [1, 0, 0, 1],
-        [1, 0, 0, 1],
-        [1, 0, 0, 1],
-        [1, 0, 0, 1],
-        [0, 1, 1, 1],
-    ],  # rows 2..6
-    "t": [
-        [0, 1, 0],
         [1, 1, 1],
-        [0, 1, 0],
-        [0, 1, 0],
-        [0, 1, 0],
-        [0, 1, 1],
-    ],  # rows 1..6 (ascender)
-    "e": [
-        [0, 1, 1, 0],
-        [1, 0, 0, 1],
+        [0, 0, 0],
+        [0, 0, 0],
+    ],
+    "R": [
+        [1, 1, 1, 1, 0],
+        [1, 0, 0, 0, 1],
+        [1, 1, 1, 1, 0],
+        [1, 0, 1, 0, 0],
+        [1, 0, 0, 1, 0],
+        [1, 0, 0, 0, 1],
+    ],
+    "O": [
+        [0, 1, 1, 1, 0],
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1],
+        [0, 1, 1, 1, 0],
+    ],
+    "U": [
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1],
+        [0, 1, 1, 1, 0],
+    ],
+    "T": [
+        [1, 1, 1, 1, 1],
+        [0, 0, 1, 0, 0],
+        [0, 0, 1, 0, 0],
+        [0, 0, 1, 0, 0],
+        [0, 0, 1, 0, 0],
+        [0, 0, 1, 0, 0],
+    ],
+    "E": [
         [1, 1, 1, 1],
         [1, 0, 0, 0],
-        [0, 1, 1, 1],
-    ],  # rows 2..6
-}
-
-# Row offset mapping per character
-ROW_OFFSETS: dict[str, int] = {
-    "a": 2,
-    "g": 2,
-    "y": 2,
-    "-": 4,
-    "r": 2,
-    "o": 2,
-    "u": 2,
-    "t": 1,
-    "e": 2,
+        [1, 1, 1, 0],
+        [1, 0, 0, 0],
+        [1, 0, 0, 0],
+        [1, 1, 1, 1],
+    ],
 }
 
 
@@ -145,9 +135,9 @@ def render_icon() -> str:
 
 def render_pixelized_wordmark(
     text: str,
-    pixel_size: float = 10.0,
-    gap: float = 2.0,
-    corner_radius: float = 2.0,
+    pixel_size: float = 7.5,
+    gap: float = 1.5,
+    corner_radius: float = 1.5,
 ) -> tuple[str, float, float]:
     """Render pixelized text as SVG rect elements.
 
@@ -155,7 +145,7 @@ def render_pixelized_wordmark(
     """
     col_step = pixel_size + gap
     row_step = pixel_size + gap
-    char_gap_cols = 1  # 1 empty pixel column between characters
+    char_gap_cols = 1
 
     rect_elements: list[str] = []
     current_col = 0
@@ -164,11 +154,9 @@ def render_pixelized_wordmark(
         if ch not in PIXEL_MAP:
             raise KeyError(f"unsupported character {ch!r} in pixel wordmark")
         grid = PIXEL_MAP[ch]
-        start_row = ROW_OFFSETS[ch]
         ch_width_cols = len(grid[0])
 
-        for r_idx, row in enumerate(grid):
-            r = start_row + r_idx
+        for r, row in enumerate(grid):
             for c, val in enumerate(row):
                 if val:
                     x = (current_col + c) * col_step
@@ -182,7 +170,7 @@ def render_pixelized_wordmark(
 
     total_cols = max(current_col - char_gap_cols, 0)
     total_width = total_cols * col_step - gap
-    total_height = 8 * row_step - gap
+    total_height = 6 * row_step - gap
     return "\n      ".join(rect_elements), total_width, total_height
 
 
@@ -197,23 +185,37 @@ CSS = """
 def build_logo_svg() -> str:
     icon = render_icon()
     pixel_rects, total_w, total_h = render_pixelized_wordmark(
-        "agy-route", pixel_size=10.0, gap=2.0, corner_radius=2.0
+        "AGY-ROUTE", pixel_size=7.5, gap=1.5, corner_radius=1.5
     )
+
+    # Canvas dimensions & centering calculations
+    canvas_w, canvas_h = 640, 128
+    gap_between_icon_and_wordmark = 24.0
+    total_lockup_w = ICON_W + gap_between_icon_and_wordmark + total_w
+
+    # Horizontal & vertical centering offsets
+    start_x = (canvas_w - total_lockup_w) / 2.0
+    icon_x = start_x
+    icon_y = (canvas_h - ICON_H) / 2.0
+
+    wordmark_x = icon_x + ICON_W + gap_between_icon_and_wordmark
+    wordmark_y = (canvas_h - total_h) / 2.0
+
     return f"""<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 128" role="img" aria-labelledby="title desc">
-  <title id="title">agy-route horizontal lockup</title>
-  <desc id="desc">Icon left, pixelized wordmark right. Fill flips in dark mode via prefers-color-scheme.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {canvas_w} {canvas_h}" role="img" aria-labelledby="title desc">
+  <title id="title">AGY-ROUTE horizontal lockup</title>
+  <desc id="desc">Icon left, uppercase pixelized wordmark right, centered horizontally and vertically.</desc>
   <defs>
     <style type="text/css"><![CDATA[
 {CSS}    ]]></style>
   </defs>
-  <rect width="640" height="128" fill="none"/>
-  <svg x="{ICON_X}" y="{ICON_Y}" width="{ICON_W}" height="{ICON_H}" viewBox="0 0 512 512" aria-hidden="true">
+  <rect width="{canvas_w}" height="{canvas_h}" fill="none"/>
+  <svg x="{icon_x:.1f}" y="{icon_y:.1f}" width="{ICON_W}" height="{ICON_H}" viewBox="0 0 512 512" aria-hidden="true">
     <g class="logo-fill">
       {icon}
     </g>
   </svg>
-  <svg x="{WORDMARK_BOX_X}" y="{WORDMARK_BOX_Y}" width="{WORDMARK_BOX_W}" height="{WORDMARK_BOX_H}" viewBox="0 0 {total_w:.1f} {total_h:.1f}" preserveAspectRatio="xMinYMid meet" aria-hidden="true">
+  <svg x="{wordmark_x:.1f}" y="{wordmark_y:.1f}" width="{total_w:.1f}" height="{total_h:.1f}" viewBox="0 0 {total_w:.1f} {total_h:.1f}" preserveAspectRatio="xMinYMid meet" aria-hidden="true">
     <g class="logo-fill">
       {pixel_rects}
     </g>
@@ -226,7 +228,7 @@ def build_icon_svg() -> str:
     icon = render_icon()
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
-  <title id="title">agy-route icon</title>
+  <title id="title">AGY-ROUTE icon</title>
   <desc id="desc">A routing diagram: input source → junction → two branches ending at destination nodes.</desc>
   <defs>
     <style type="text/css"><![CDATA[
