@@ -2,20 +2,32 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
 HookFormat = Literal["json", "jsonc", "toml"]
 
 
+@dataclass
+class TargetInstallResult:
+    target: str
+    skill_installed: bool
+    skill_path: str | None
+    hook_installed: bool
+    plugin_installed: bool
+    commands_installed: list[str] = field(default_factory=list)
+    skill_changed: bool = False
+    hook_changed: bool = False
+    plugin_changed: bool = False
+    message: str = ""
+
+
 class Target(ABC):
     """A target agent's settings layout (skill dir + hook config path/format).
 
-    Concrete targets implement `install_skill`, `install_hook`,
-    `uninstall_skill`, `uninstall_hook`. Each method is idempotent.
-
-    The orchestrator (`agy_route.install`) calls into the right methods
-    based on the user's `--target {claude|opencode|...}` flag.
+    Concrete targets implement polymorphic installation (`install_target`)
+    and uninstallation (`uninstall_target`).
     """
 
     #: Stable name used in the CLI flag (`--target claude`).
@@ -33,27 +45,25 @@ class Target(ABC):
 
     @abstractmethod
     def is_present(self) -> bool:
-        """Whether this target's config_dir / hook_config_path is detectable on the host."""
+        """Whether this target is detectable on the host."""
 
     @abstractmethod
-    def install_skill(self, src_skill_md: Path, skill_name: str = "agy-web-search") -> Path:
-        """Drop the SKILL.md into the target's skill dir. Returns the install path.
-
-        Must be idempotent: re-running with the same content is a no-op.
-        """
-
-    @abstractmethod
-    def uninstall_skill(self, skill_name: str = "agy-web-search") -> bool:
-        """Remove the installed skill. Returns True if anything was removed."""
-
-    @abstractmethod
-    def install_hook(self, hook_config: dict, namespace: str = "agy-route") -> None:
-        """Merge our hook entry into the target's hook config. Idempotent.
-
-        Must make a `.bak` of the original config before writing. Must only
-        touch entries tagged with the namespace key.
-        """
+    def install_target(
+        self,
+        *,
+        skill_only: bool = False,
+        hook_only: bool = False,
+        dry_run: bool = False,
+        skills: tuple[str, ...] = ("agy-web-search", "agy-route-research"),
+        namespace: str = "agy-route",
+    ) -> TargetInstallResult:
+        """Install skills, hooks, plugins, or commands for this target."""
 
     @abstractmethod
-    def uninstall_hook(self, namespace: str = "agy-route") -> bool:
-        """Remove hook entries tagged with our namespace. Returns True if any were removed."""
+    def uninstall_target(
+        self,
+        *,
+        skills: tuple[str, ...] = ("agy-web-search", "agy-route-research"),
+        namespace: str = "agy-route",
+    ) -> tuple[bool, bool]:
+        """Uninstall skills and hooks/plugins. Returns (skills_removed, hook_or_plugin_removed)."""

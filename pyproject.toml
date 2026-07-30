@@ -29,29 +29,16 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/agy_route"]
 
-# The Claude-plugin tree (manifest, SKILL, command, hooks) lives at the repo
-# root for human inspection / GitHub browsing. The canonical, runtime-use
-# copies of the policy files ship with the Python package under
-# `src/agy_route/policies/` so importlib.resources can find them after
-# `uv tool install`. The install_data mirror (SKILL.md + hooks.json + the
-# opencode plugin JS + opencode command markdowns used by
-# `agy-route install --target opencode`) is force-included so it ships
-# inside the wheel.
 [tool.hatch.build.targets.wheel.force-include]
-"src/agy_route/install_data/hooks.json"                            = "agy_route/install_data/hooks.json"
-"src/agy_route/install_data/skill.md"                             = "agy_route/install_data/skill.md"
-"src/agy_route/install_data/skill-research.md"                    = "agy_route/install_data/skill-research.md"
-"src/agy_route/install_data/opencode-plugin/agy-route.js"          = "agy_route/install_data/opencode-plugin/agy-route.js"
-"src/agy_route/install_data/opencode-commands/agy-search.md"       = "agy_route/install_data/opencode-commands/agy-search.md"
-"src/agy_route/install_data/opencode-commands/agy-research.md"     = "agy_route/install_data/opencode-commands/agy-research.md"
-".claude-plugin"                                                    = "agy_route/claude-plugin"
-"commands"                                                          = "agy_route/commands"
-"opencode-commands"                                                 = "agy_route/opencode-commands"
-"opencode-plugin"                                                   = "agy_route/opencode-plugin"
 "skills"                                                            = "agy_route/skills"
-"config"                                                            = "agy_route/config"
 "hooks"                                                             = "agy_route/hooks"
+"commands"                                                          = "agy_route/commands"
+"opencode-commands"                                                 = "agy_route/opencode_commands"
+"opencode-plugin"                                                   = "agy_route/opencode_plugin"
+"config"                                                            = "agy_route/config"
+".claude-plugin"                                                    = "agy_route/claude_plugin"
 "README.md"                                                         = "agy_route/README.md"
 "CHANGELOG.md"                                                      = "agy_route/CHANGELOG.md"
 "LICENSE"                                                           = "agy_route/LICENSE"
 "pyproject.toml"                                                    = "agy_route/pyproject.toml"
+

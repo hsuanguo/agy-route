@@ -15,13 +15,13 @@ Renders each `CommandSpec` into two output paths:
      (`agent`, `model`, `subtask`).
 
 Both outputs are committed to the repo (with a header comment that
-says "auto-generated"), so they ship inside the wheel via the
-`install_data/` mirror for the opencode path and inside the plugin
-tree for the Claude Code path.
+says "auto-generated"), so they ship inside the wheel via force-include
+in pyproject.toml.
 
 Run from the repo root:
 
     python3 tools/generate_commands.py
+    python3 tools/generate_commands.py --check
 """
 from __future__ import annotations
 
@@ -79,19 +79,41 @@ def _format_opencode(spec: CommandSpec) -> str:
 
 
 def main() -> None:
+    check_mode = "--check" in sys.argv
     CLAUDE_OUT.mkdir(exist_ok=True)
     OPENCODE_OUT.mkdir(exist_ok=True)
+    out_of_date = False
+
     for spec in COMMAND_SPECS:
-        claude_md = AUTO_GEN_HEADER.format(auto_marker="") + _format_claude(spec)
+        claude_md = (AUTO_GEN_HEADER.format(auto_marker="") + _format_claude(spec)).lstrip()
         opencode_md = (
             AUTO_GEN_HEADER.format(
                 auto_marker="<!-- AUTO-GENERATED; see tools/generate_commands.py. -->\n"
             )
             + _format_opencode(spec)
-        )
-        (CLAUDE_OUT / f"{spec.name}.md").write_text(claude_md.lstrip())
-        (OPENCODE_OUT / f"{spec.name}.md").write_text(opencode_md.lstrip())
-        print(f"wrote commands/{spec.name}.md + opencode-commands/{spec.name}.md")
+        ).lstrip()
+
+        claude_path = CLAUDE_OUT / f"{spec.name}.md"
+        opencode_path = OPENCODE_OUT / f"{spec.name}.md"
+
+        if check_mode:
+            if not claude_path.is_file() or claude_path.read_text() != claude_md:
+                print(f"OUT OF DATE: {claude_path}", file=sys.stderr)
+                out_of_date = True
+            if not opencode_path.is_file() or opencode_path.read_text() != opencode_md:
+                print(f"OUT OF DATE: {opencode_path}", file=sys.stderr)
+                out_of_date = True
+        else:
+            claude_path.write_text(claude_md)
+            opencode_path.write_text(opencode_md)
+            print(f"wrote commands/{spec.name}.md + opencode-commands/{spec.name}.md")
+
+    if check_mode:
+        if out_of_date:
+            print("Command files are out of date. Run 'python3 tools/generate_commands.py' to update.", file=sys.stderr)
+            sys.exit(1)
+        else:
+            print("All generated commands are up to date.")
 
 
 if __name__ == "__main__":
