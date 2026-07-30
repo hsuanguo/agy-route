@@ -5,9 +5,9 @@
   <defs>
     <style type="text/css"><![CDATA[
 
-    .logo-fill { color: #000000; }
+    .logo-fill { fill: #000000; color: #000000; }
     @media (prefers-color-scheme: dark) {
-      .logo-fill { color: #e6edf3; }
+      .logo-fill { fill: #e6edf3; color: #e6edf3; }
     }
     ]]></style>
   </defs>
