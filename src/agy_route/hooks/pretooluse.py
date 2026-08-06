@@ -33,24 +33,24 @@ from typing import Any
 
 
 def _build_denial_reason(query: str, has_filters: bool) -> str:
-    """Construct the reason text shown to Claude as the tool-error message."""
+    """Construct the reason text shown to Claude as the tool-error message.
+
+    The message is intentionally short and branded — Claude Code wraps
+    `permissionDecision: "deny"` outputs in an "Error:" prefix that looks
+    alarming, but the body itself is a friendly redirect hint, not a
+    failure. Keeping the prose minimal makes the redirect scannable.
+    """
     q = query.strip()
     if has_filters:
         # WebSearch had allowed_domains / blocked_domains. agy-route doesn't
         # forward those today; tell the model to drop the filter for this call.
         return (
-            "WebSearch is replaced by `agy-route search` (a policy-gated, "
-            "grounded alternative that uses the agy CLI's `search_web` tool "
-            "with citations). Drop the allowed/blocked-domain filter for "
-            "this search and run via Bash instead:\n\n"
-            f"  agy-route search \"{q}\"\n\n"
-            "If a future `agy-route` version supports domain filtering, drop "
-            "this workaround."
+            "[agy-route] redirecting WebSearch → agy-route search "
+            "(drop allowed/blocked-domains for this call):\n\n"
+            f"  agy-route search \"{q}\""
         )
     return (
-        "WebSearch is replaced by `agy-route search` — a policy-gated, "
-        "grounded alternative that uses the agy CLI's `search_web` tool "
-        "with source citations. Run via Bash instead:\n\n"
+        "[agy-route] redirecting WebSearch → agy-route search:\n\n"
         f"  agy-route search \"{q}\""
     )
 
