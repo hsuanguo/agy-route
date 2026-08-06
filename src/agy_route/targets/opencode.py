@@ -26,6 +26,7 @@ class OpenCodeTarget(Target):
     def install_target(
         self,
         *,
+        with_hook: bool = False,
         skill_only: bool = False,
         hook_only: bool = False,
         dry_run: bool = False,
@@ -48,7 +49,11 @@ class OpenCodeTarget(Target):
         plugin_changed = False
         commands_installed: list[str] = []
 
-        if not hook_only:
+        install_skills = not hook_only
+        install_commands = not hook_only and not skill_only
+        install_plugin = hook_only or with_hook
+
+        if install_skills:
             for skill_name in skills:
                 content = read_package_resource("skills", skill_name, "SKILL.md")
                 dst_dir = self.home / ".claude" / "skills" / skill_name
@@ -61,7 +66,21 @@ class OpenCodeTarget(Target):
                 skill_paths.append(str(dst))
                 skill_changed_any = skill_changed_any or not same_content
 
-        if not skill_only:
+        if install_commands:
+            dst_cmd_dir = self.config_dir / "commands"
+            if not dry_run:
+                dst_cmd_dir.mkdir(parents=True, exist_ok=True)
+
+            for spec in COMMAND_SPECS:
+                dst_cmd = dst_cmd_dir / f"{spec.name}.md"
+                content = spec.render_opencode()
+                same_content = dst_cmd.is_file() and dst_cmd.read_text() == content
+                if not dry_run:
+                    if not same_content:
+                        dst_cmd.write_text(content)
+                commands_installed.append(str(dst_cmd))
+
+        if install_plugin:
             # Install plugin JS
             plugin_text = read_package_resource("plugins", "opencode", "agy-route.js")
             plugin_bytes = plugin_text.encode("utf-8")
@@ -78,20 +97,6 @@ class OpenCodeTarget(Target):
                 plugin_changed = not plugin_same
             else:
                 plugin_changed = not plugin_same
-
-            # Dynamically render and install opencode commands
-            dst_cmd_dir = self.config_dir / "commands"
-            if not dry_run:
-                dst_cmd_dir.mkdir(parents=True, exist_ok=True)
-
-            for spec in COMMAND_SPECS:
-                dst_cmd = dst_cmd_dir / f"{spec.name}.md"
-                content = spec.render_opencode()
-                same_content = dst_cmd.is_file() and dst_cmd.read_text() == content
-                if not dry_run:
-                    if not same_content:
-                        dst_cmd.write_text(content)
-                commands_installed.append(str(dst_cmd))
 
         return TargetInstallResult(
             target=self.name,

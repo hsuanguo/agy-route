@@ -32,8 +32,12 @@ def test_install_cmd_opencode_output_paths(tmp_path):
         assert result.exit_code == 0
         assert "installed (opencode):" in result.stdout
         assert "• skills:" in result.stdout
-        assert "• plugin:" in result.stdout
         assert "• commands:" in result.stdout
+
+        # With plugin/hook flag
+        res_with = runner.invoke(app, ["install", "--target", "opencode", "--with-plugin"])
+        assert res_with.exit_code == 0
+        assert "• plugin:" in res_with.stdout
 
 
 def test_uninstall_cmd_scan_all(tmp_path):
