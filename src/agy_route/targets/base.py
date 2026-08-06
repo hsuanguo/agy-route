@@ -17,6 +17,9 @@ class TargetInstallResult:
     hook_installed: bool
     plugin_installed: bool
     commands_installed: list[str] = field(default_factory=list)
+    skill_paths: list[str] = field(default_factory=list)
+    hook_path: str | None = None
+    plugin_path: str | None = None
     skill_changed: bool = False
     hook_changed: bool = False
     plugin_changed: bool = False
