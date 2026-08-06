@@ -85,11 +85,11 @@ add` + `/plugin install` step but gives you those features.
 ```bash
 uv tool install git+https://github.com/hsuanguo/agy-route
 /plugin marketplace add https://github.com/hsuanguo/agy-route
-/plugin install agy-web-search
+/plugin install agy-route
 ```
 
 You can switch between paths any time — `agy-route uninstall` reverses the
-lite install, `/plugin uninstall agy-web-search` reverses the marketplace one.
+lite install, `/plugin uninstall agy-route` reverses the marketplace one.
 The two paths don't conflict; if you install both, the second is a no-op
 (idempotent).
 
