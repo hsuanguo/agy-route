@@ -103,8 +103,8 @@ COMMAND_SPECS: list[CommandSpec] = [
     CommandSpec.load(
         name="agy-research",
         description=(
-            "Multi-source deep research via agy-route: plan → fan-out fetch → "
-            "URL-quote verification → cited synthesis."
+            "Multi-source deep research via agy-route: plan, fan-out fetch, "
+            "URL-quote verification, and cited synthesis."
         ),
         argument_hint="<topic>",
         opencode_subtask=True,
