@@ -5,17 +5,17 @@ description: Perform multi-source deep research on a topic via agy-route researc
 
 # AGY Route Research
 
-Multi-source deep research using `agy-route` primitives and Claude reasoning.
+Multi-source deep research using `agy-route` primitives and AI Agent reasoning.
 
 ## The 5-Step Recipe
 
 | Step | Responsible | Tool / Method |
 |---|---|---|
-| 1. Plan | Claude | Decompose topic into 3–6 sub-questions in context |
+| 1. Plan | AI Agent | Decompose topic into 3–6 sub-questions in context |
 | 2. Fan-out fetch | agy (parallel) | `agy-route research fetch "<sub-question>"` |
 | 3. URL-quote verify | agy (parallel) | `agy-route research quote "<claim>" "<url>"` |
-| 4. Adversarial verify | Claude | Evaluate quotes; mark as verified (≥2 independent sources) or unverified |
-| 5. Synthesize | Claude | Write a cited research report with verbatim quotes and source URLs |
+| 4. Adversarial verify | AI Agent | Evaluate quotes; mark as verified (≥2 independent sources) or unverified |
+| 5. Synthesize | AI Agent | Write a cited research report with verbatim quotes and source URLs |
 
 ## Execution Details
 
