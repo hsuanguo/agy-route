@@ -20,5 +20,9 @@
     "./skills/agy-web-search",
     "./skills/agy-research"
   ],
+  "commands": [
+    "./commands/agy-web-search.md",
+    "./commands/agy-research.md"
+  ],
   "hooks": "./plugins/claude/hooks.json"
 }
