@@ -13,7 +13,7 @@ from agy_route.targets import (
 )
 
 NAMESPACE = "agy-route"
-SKILL_BUNDLES = ("agy-web-search", "agy-route-research")
+SKILL_BUNDLES = ("agy-web-search", "agy-research")
 
 
 def install(

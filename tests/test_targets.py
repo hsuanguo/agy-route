@@ -28,7 +28,7 @@ def test_claude_target_install_and_uninstall(tmp_path):
 
     # Verify files created
     assert (tmp_path / ".claude" / "skills" / "agy-web-search" / "SKILL.md").is_file()
-    assert (tmp_path / ".claude" / "skills" / "agy-route-research" / "SKILL.md").is_file()
+    assert (tmp_path / ".claude" / "skills" / "agy-research" / "SKILL.md").is_file()
     assert (tmp_path / ".claude" / "commands" / "agy-search.md").is_file()
     assert (tmp_path / ".claude" / "commands" / "agy-research.md").is_file()
     assert (tmp_path / ".claude" / "settings.json").is_file()

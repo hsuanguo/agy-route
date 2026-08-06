@@ -256,7 +256,7 @@ research_app = typer.Typer(
     name="research",
     help=(
         "Deep-research primitives (fetch + quote). Used by the "
-        "/agy-research slash command and the agy-route-research skill."
+        "/agy-research slash command and the agy-research skill."
     ),
     no_args_is_help=True,
     add_completion=False,

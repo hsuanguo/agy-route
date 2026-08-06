@@ -18,7 +18,7 @@
   ],
   "skills": [
     "./skills/agy-web-search",
-    "./skills/agy-route-research"
+    "./skills/agy-research"
   ],
   "hooks": "./plugins/claude/hooks.json"
 }

@@ -66,7 +66,7 @@ class Target(ABC):
         skill_only: bool = False,
         hook_only: bool = False,
         dry_run: bool = False,
-        skills: tuple[str, ...] = ("agy-web-search", "agy-route-research"),
+        skills: tuple[str, ...] = ("agy-web-search", "agy-research"),
         namespace: str = "agy-route",
     ) -> TargetInstallResult:
         """Install skills, hooks, plugins, or commands for this target."""
@@ -75,7 +75,7 @@ class Target(ABC):
     def uninstall_target(
         self,
         *,
-        skills: tuple[str, ...] = ("agy-web-search", "agy-route-research"),
+        skills: tuple[str, ...] = ("agy-web-search", "agy-research"),
         namespace: str = "agy-route",
     ) -> TargetUninstallResult:
         """Uninstall skills, hooks, plugins, and commands for this target."""
