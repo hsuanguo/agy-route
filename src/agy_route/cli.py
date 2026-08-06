@@ -464,8 +464,15 @@ def _run(
         return
     full_prompt = build_full_prompt(policy_text, prompt, prefix=prompt_prefix)
 
-    # Invoke agy.
-    pass_model = resolved.name if resolved.name else None
+    # Invoke agy. By default we do NOT pass --model: passing it makes
+    # agy latch onto the literal "model" string and answer about the
+    # --model flag instead of the user's prompt (verified on agy 1.1.x).
+    # Opt in via AGY_ROUTE_FORCE_MODEL=1 to forward the auto-resolved name.
+    pass_model = (
+        resolved.name
+        if (resolved.name and os.environ.get("AGY_ROUTE_FORCE_MODEL"))
+        else None
+    )
     start = time.monotonic()
     code, stdout, stderr = invoke_agy(
         full_prompt,

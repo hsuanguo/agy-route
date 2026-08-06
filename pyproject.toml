@@ -40,7 +40,6 @@ packages = ["src/agy_route"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "skills"                                                            = "agy_route/skills"
-"commands"                                                          = "agy_route/commands"
 "plugins"                                                           = "agy_route/plugins"
 "config"                                                            = "agy_route/config"
 ".claude-plugin"                                                    = "agy_route/claude_plugin"
