@@ -148,28 +148,36 @@ def uninstall_cmd(
     """Remove the SKILL.md and hook entries previously installed by `agy-route install`."""
     from agy_route import install as install_mod
 
+    def _format_uninstall(res) -> str:
+        actions = []
+        if res.skills_removed:
+            actions.append(f"skills ({len(res.skills_removed)})")
+        if res.hook_removed:
+            actions.append("hook")
+        if res.plugin_removed:
+            actions.append("plugin")
+        if res.commands_removed:
+            actions.append(f"commands ({len(res.commands_removed)})")
+        if actions:
+            return f"{res.target}: removed " + ", ".join(actions)
+        return f"{res.target}: nothing to remove"
+
     if target is None:
         results = install_mod.uninstall_all()
         any_removed = False
-        for name, (skill_removed, hook_removed) in results.items():
-            if skill_removed or hook_removed:
+        for name, res in results.items():
+            if res.skills_removed or res.hook_removed or res.plugin_removed or res.commands_removed:
                 any_removed = True
-                typer.echo(
-                    f"{name}: removed skill={skill_removed} hook={hook_removed}"
-                )
-            else:
-                typer.echo(f"{name}: nothing to remove")
+            typer.echo(_format_uninstall(res))
         if not any_removed:
             typer.echo("nothing to remove")
     else:
         try:
-            skill_removed, hook_removed = install_mod.uninstall(target)
+            res = install_mod.uninstall(target)
         except KeyError as e:
             typer.echo(f"agy-route uninstall: {e}", err=True)
             raise typer.Exit(EXIT_FAILED) from None
-        typer.echo(
-            f"{target}: removed skill={skill_removed} hook={hook_removed}"
-        )
+        typer.echo(_format_uninstall(res))
     raise typer.Exit(EXIT_OK)
 
 

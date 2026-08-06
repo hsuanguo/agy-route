@@ -5,7 +5,12 @@ OpenCodeTarget, etc.) polymorphically.
 """
 from __future__ import annotations
 
-from agy_route.targets import TargetInstallResult, all_targets, get as get_target
+from agy_route.targets import (
+    TargetInstallResult,
+    TargetUninstallResult,
+    all_targets,
+    get as get_target,
+)
 
 NAMESPACE = "agy-route"
 SKILL_BUNDLES = ("agy-web-search", "agy-route-research")
@@ -29,14 +34,13 @@ def install(
     )
 
 
-def uninstall(target_name: str) -> tuple[bool, bool]:
-    """Returns (skill_removed_count, hook_or_plugin_removed)."""
+def uninstall(target_name: str) -> TargetUninstallResult:
     target = get_target(target_name)
     return target.uninstall_target(skills=SKILL_BUNDLES, namespace=NAMESPACE)
 
 
-def uninstall_all() -> dict[str, tuple[bool, bool]]:
-    out: dict[str, tuple[bool, bool]] = {}
+def uninstall_all() -> dict[str, TargetUninstallResult]:
+    out: dict[str, TargetUninstallResult] = {}
     for t in all_targets():
         out[t.name] = t.uninstall_target(skills=SKILL_BUNDLES, namespace=NAMESPACE)
     return out

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from agy_route.core.resources import read_package_resource
 from agy_route.specs import COMMAND_SPECS
-from agy_route.targets.base import Target, TargetInstallResult
+from agy_route.targets.base import Target, TargetInstallResult, TargetUninstallResult
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -166,17 +166,19 @@ class ClaudeTarget(Target):
         *,
         skills: tuple[str, ...] = ("agy-web-search", "agy-route-research"),
         namespace: str = "agy-route",
-    ) -> tuple[bool, bool]:
-        skill_removed_count = 0
+    ) -> TargetUninstallResult:
+        skills_removed: list[str] = []
         for skill_name in skills:
             dst_dir = self.config_dir / self.skill_subdir / skill_name
             if dst_dir.is_dir():
                 shutil.rmtree(dst_dir)
-                skill_removed_count += 1
+                skills_removed.append(str(dst_dir))
 
+        commands_removed: list[str] = []
         cmds_dir = self.config_dir / "commands"
         if cmds_dir.is_dir():
             for f in cmds_dir.glob("agy-*.md"):
+                commands_removed.append(str(f))
                 f.unlink()
             try:
                 cmds_dir.rmdir()
@@ -195,4 +197,10 @@ class ClaudeTarget(Target):
                 _write_json(self.hook_config_path, current)
                 hook_removed = True
 
-        return bool(skill_removed_count), hook_removed
+        return TargetUninstallResult(
+            target=self.name,
+            skills_removed=skills_removed,
+            hook_removed=hook_removed,
+            plugin_removed=False,
+            commands_removed=commands_removed,
+        )
