@@ -34,7 +34,7 @@ agy-route/
 │   ├── hooks/                       # Executable hook handlers (e.g. pretooluse.py)
 │   ├── specs/                       # Single source of truth for slash commands & templates
 │   │   ├── command_specs.py         # CommandSpec dataclass + render_claude() / render_opencode()
-│   │   └── bodies/                  # Markdown command body templates (agy-search.md, agy-research.md)
+│   │   └── bodies/                  # Markdown command body templates (agy-web-search.md, agy-research.md)
 │   └── targets/                     # Polymorphic Target ABC abstractions (claude.py, opencode.py)
 ├── tests/                           # Pytest unit test suite
 └── pyproject.toml                   # Hatchling build configuration & console script entrypoints

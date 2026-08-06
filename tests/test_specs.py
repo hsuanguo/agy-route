@@ -10,14 +10,14 @@ from agy_route.specs.command_specs import (
 def test_command_specs_loaded():
     assert len(COMMAND_SPECS) >= 2
     names = [spec.name for spec in COMMAND_SPECS]
-    assert "agy-search" in names
+    assert "agy-web-search" in names
     assert "agy-research" in names
 
 
 def test_command_spec_post_init_autoload():
-    spec = CommandSpec(name="agy-search", description="test description")
+    spec = CommandSpec(name="agy-web-search", description="test description")
     assert spec.body != ""
-    assert "agy-route" in spec.body or "agy" in spec.body
+    assert "agy-web-search" in spec.body or "agy" in spec.body
 
 
 def test_render_claude():
