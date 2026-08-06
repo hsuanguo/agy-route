@@ -48,42 +48,20 @@
   causes opencode to surface the message as the tool-call error,
   which the model reads and recovers from.
 
-## 0.3.0 — 2026-07-29
+## 0.5.0 — 2026-08-06
 
 **Added**
-- **Deep-research recipe** (`agy-route research fetch` + `agy-route research quote`):
-  - `agy-route research fetch "<sub-question>"` — fan-out search primitive.
-    Wraps the search-only policy and asks agy for 5–8 bullet findings with
-    URLs + publication dates. Compact output keeps bulky pages on
-    Gemini's side, not Claude's.
-  - `agy-route research quote "<claim>" "<url>"` — URL-quote verification.
-    Asks agy to open the URL and quote the verbatim sentence(s)
-    supporting the claim, or reply `NOT SUPPORTED`. Forces `read_url`
-    / `read_url_content` use, prevents parametric-knowledge fallback.
-  - Both reuse the existing search policy + model resolution + exit-code
-    machinery (0 / 2 / 3 / 10 / 11 / 12 / 13 / 14 / 15) and accept
-    `--json`, `--timeout`, `--model`, `--verbose`, `--log-file`.
-- **Slash command** `commands/agy-research.md` (`/agy-research <topic>`) —
-  the orchestrator. Drives the full recipe: plan → fan-out fetch
-  → URL-quote → adversarial verify → synthesize. Steps 1, 4, 5 are
-  Claude reasoning in context; steps 2, 3 are agy calls via Bash.
-- **Skill** `skills/agy-route-research/SKILL.md` — the intent-surface
-  fallback for paraphrased research requests ("research X",
-  "investigate Y", "look into Z", etc.) that don't reach for the
-  slash command. Same content as the slash command body, framed for
-  intent matching.
-- **`agy-route install` now drops both skills** (agy-web-search +
-  agy-route-research) into `~/.claude/skills/`. `install_data/` mirrors
-  the SKILL.md files for both; `agy-route uninstall` removes both.
-- **Plugin manifest + marketplace** updated:
-  - `.claude-plugin/plugin.json` declares both skills + both commands.
-  - `.claude-plugin/marketplace.json` lists two plugins:
-    `agy-web-search` (search) and `agy-route-research` (research).
-
-**Why no `plan`/`verify`/`synthesize` CLI**: those steps are pure
-Claude reasoning with no shell work, no agy call. Wrapping them in
-a CLI would round-trip a prompt through bash with zero value. They
-live as instructions in the slash command + skill markdown.
+- **Claude Code `permissions.allow` whitelist** in `~/.claude/settings.json`.
+  `agy-route install --target claude` now also merges a `permissions` block
+  with `Bash(agy-route search *)` and `Bash(agy-route research *)`,
+  auto-allowing every agy-route subcommand without a permission prompt.
+  Uninstall strips any `Bash(agy-route ...)` entries we wrote. Idempotent:
+  re-running is a no-op.
+- **Renamed** `plugins/claude/hooks.json` → `plugins/claude/claude-settings.json`.
+  Now the single source of truth for everything we merge into the user's
+  `~/.claude/settings.json`: both the `permissions.allow` block (v0.5.0)
+  and the `hooks.PreToolUse` block (existing). The `install_data/` mirror
+  ships in the wheel via `force-include` on the `plugins/` directory.
 
 ## 0.2.0 — 2026-07-28
 

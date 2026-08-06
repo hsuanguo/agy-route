@@ -1,6 +1,6 @@
 {
   "name": "agy-route",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Route AI coding agent web searches and deep research through the agy CLI (Google Antigravity / Gemini) across Claude Code and opencode.",
   "author": {
     "name": "agy-route contributors",
@@ -24,5 +24,5 @@
     "./commands/agy-web-search.md",
     "./commands/agy-research.md"
   ],
-  "hooks": "./plugins/claude/hooks.json"
+  "hooks": "./plugins/claude/claude-settings.json"
 }
