@@ -93,7 +93,7 @@ class CommandSpec:
 
 COMMAND_SPECS: list[CommandSpec] = [
     CommandSpec.load(
-        name="agy-search",
+        name="agy-web-search",
         description=(
             "Run a grounded web search via the agy CLI (Gemini, with citations). "
             "Drop-in for Claude's built-in WebSearch tool."

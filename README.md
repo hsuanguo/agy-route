@@ -35,7 +35,7 @@ This is the first plugin in the [`agy-route`](.) repo. Future plugins
 > https://github.com/hsuanguo/agy-route`, but it's **opt-in**. The
 > recommended install is the **lite path** below — `uv tool install` +
 > `agy-route install --target <claude|opencode>`. Pick the marketplace
-> path only if you want the `/agy-search` and `/agy-research` slash
+> path only if you want the `/agy-web-search` and `/agy-research` slash
 > commands registered as Claude Code pluglets, versioned
 > `/plugin update`, or to appear in `/plugin marketplace browse`.
 
@@ -78,7 +78,7 @@ URLs.
 
 ### Optional: plugin marketplace path
 
-Use this only if you want the `/agy-search` slash command, versioned
+Use this only if you want the `/agy-web-search` slash command, versioned
 `/plugin update`, or marketplace browsability. Adds a `/plugin marketplace
 add` + `/plugin install` step but gives you those features.
 
@@ -101,7 +101,7 @@ Once the plugin is enabled, **every `WebSearch` is automatically routed through
 `agy-route search`** by the hook. To force an explicit search:
 
 ```
-/agy-search "Claude API pricing June 2026"
+/agy-web-search "Claude API pricing June 2026"
 ```
 
 ### From any shell
@@ -184,24 +184,9 @@ The two paths don't conflict — uninstall each one you actually used.
 assets/
   logo.svg                    # horizontal lockup (icon + wordmark)
   icon.svg                    # icon only (favicon / social-card)
-tools/
-  generate_logo.py            # regenerates assets/*.svg from the letterforms
-  generate_commands.py        # regenerates commands/* + opencode-commands/* from specs
-  command_specs.py            # source of truth for commands
-  bodies/{agy-search,agy-research}.md   # bodies for the commands
 .claude-plugin/
-  plugin.json                 # plugin manifest (skills + commands + hooks)
+  plugin.json                 # plugin manifest (skills + hooks)
   marketplace.json            # marketplace entry (for /plugin marketplace add — opt-in)
-hooks/
-  hooks.json                  # PreToolUse hook wiring (WebSearch → agy-route)
-commands/
-  agy-search.md               # generated from tools/bodies/
-  agy-research.md             # generated from tools/bodies/
-opencode-plugin/
-  agy-route.js                # opencode plugin (~30 LOC)
-opencode-commands/
-  agy-search.md               # generated from tools/bodies/ (opencode-flavored frontmatter)
-  agy-research.md             # generated from tools/bodies/
 skills/
   agy-web-search/SKILL.md     # single-shot web search skill
   agy-research/SKILL.md       # deep-research skill

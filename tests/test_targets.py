@@ -29,7 +29,7 @@ def test_claude_target_install_and_uninstall(tmp_path):
     # Verify files created
     assert (tmp_path / ".claude" / "skills" / "agy-web-search" / "SKILL.md").is_file()
     assert (tmp_path / ".claude" / "skills" / "agy-research" / "SKILL.md").is_file()
-    assert (tmp_path / ".claude" / "commands" / "agy-search.md").is_file()
+    assert (tmp_path / ".claude" / "commands" / "agy-web-search.md").is_file()
     assert (tmp_path / ".claude" / "commands" / "agy-research.md").is_file()
     assert (tmp_path / ".claude" / "settings.json").is_file()
 
@@ -58,7 +58,7 @@ def test_opencode_target_install_and_uninstall(tmp_path):
     # Verify files created
     assert (tmp_path / ".claude" / "skills" / "agy-web-search" / "SKILL.md").is_file()
     assert (tmp_path / ".config" / "opencode" / "plugins" / "agy-route.js").is_file()
-    assert (tmp_path / ".config" / "opencode" / "commands" / "agy-search.md").is_file()
+    assert (tmp_path / ".config" / "opencode" / "commands" / "agy-web-search.md").is_file()
 
     # Uninstall
     unres = target.uninstall_target()
