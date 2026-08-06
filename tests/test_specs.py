@@ -29,7 +29,7 @@ def test_render_claude():
     )
     rendered = spec.render_claude()
     assert "---" in rendered
-    assert "description: Test description" in rendered
+    assert 'description: "Test description"' in rendered
     assert 'argument-hint: "<query>"' in rendered
     assert "Body content here" in rendered
 
@@ -45,7 +45,7 @@ def test_render_opencode():
     )
     rendered = spec.render_opencode()
     assert "---" in rendered
-    assert "description: Test description" in rendered
+    assert 'description: "Test description"' in rendered
     assert "agent: researcher" in rendered
     assert "model: gemini" in rendered
     assert "subtask: true" in rendered

@@ -66,7 +66,8 @@ class CommandSpec:
 
     def render_claude(self) -> str:
         """Render markdown formatted for Claude Code slash command."""
-        lines = ["---", f"description: {self.description}"]
+        desc = self.description.replace('"', '\\"')
+        lines = ["---", f'description: "{desc}"']
         if self.argument_hint:
             lines.append(f'argument-hint: "{self.argument_hint}"')
         lines.append("---")
@@ -77,7 +78,8 @@ class CommandSpec:
 
     def render_opencode(self) -> str:
         """Render markdown formatted strictly for opencode slash command."""
-        lines = ["---", f"description: {self.description}"]
+        desc = self.description.replace('"', '\\"')
+        lines = ["---", f'description: "{desc}"']
         if self.opencode_agent:
             lines.append(f"agent: {self.opencode_agent}")
         if self.opencode_model:
