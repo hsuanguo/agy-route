@@ -100,6 +100,8 @@ class OpenCodeTarget(Target):
             hook_installed=False,
             plugin_installed=plugin_installed,
             commands_installed=commands_installed,
+            skill_paths=skill_paths,
+            plugin_path=str(dst_plugin) if plugin_installed else None,
             skill_changed=skill_changed_any,
             plugin_changed=plugin_changed,
         )

@@ -73,6 +73,14 @@ def targets_cmd() -> None:
     raise typer.Exit(EXIT_OK)
 
 
+def _short_path(p: str | Path) -> str:
+    path = Path(p)
+    try:
+        return f"~/{path.relative_to(Path.home())}"
+    except (ValueError, RuntimeError):
+        return str(path)
+
+
 @app.command("install")
 def install_cmd(
     target: str = typer.Option(
@@ -119,18 +127,25 @@ def install_cmd(
             f"hook_installed={result.hook_installed}"
         )
     else:
-        actions = []
-        if not hook_only and result.skill_path:
-            actions.append(f"skill → {result.skill_path}")
+        sections = []
+        if not hook_only and result.skill_paths:
+            lines = ["  • skills:"] + [f"      - {_short_path(p)}" for p in result.skill_paths]
+            sections.append("\n".join(lines))
         if not skill_only:
-            if result.hook_installed:
-                actions.append(f"hook → {target}")
-            if result.plugin_installed:
-                actions.append(f"plugin → {target}")
+            if result.hook_installed and result.hook_path:
+                sections.append(f"  • hook:\n      - {_short_path(result.hook_path)}")
+            elif result.hook_installed:
+                sections.append(f"  • hook:\n      - {target}")
+            if result.plugin_installed and result.plugin_path:
+                sections.append(f"  • plugin:\n      - {_short_path(result.plugin_path)}")
+            elif result.plugin_installed:
+                sections.append(f"  • plugin:\n      - {target}")
         if result.commands_installed:
-            actions.append(f"commands → {'; '.join(result.commands_installed)}")
-        if actions:
-            typer.echo("installed: " + "; ".join(actions))
+            lines = ["  • commands:"] + [f"      - {_short_path(p)}" for p in result.commands_installed]
+            sections.append("\n".join(lines))
+
+        if sections:
+            typer.echo(f"installed ({target}):\n" + "\n".join(sections))
         else:
             typer.echo(f"nothing to install for target {target!r}")
     raise typer.Exit(EXIT_OK)
@@ -149,17 +164,20 @@ def uninstall_cmd(
     from agy_route import install as install_mod
 
     def _format_uninstall(res) -> str:
-        actions = []
+        sections = []
         if res.skills_removed:
-            actions.append(f"skills ({len(res.skills_removed)})")
+            lines = [f"  • skills ({len(res.skills_removed)}):"] + [f"      - {_short_path(p)}" for p in res.skills_removed]
+            sections.append("\n".join(lines))
         if res.hook_removed:
-            actions.append("hook")
+            sections.append("  • hook")
         if res.plugin_removed:
-            actions.append("plugin")
+            sections.append("  • plugin")
         if res.commands_removed:
-            actions.append(f"commands ({len(res.commands_removed)})")
-        if actions:
-            return f"{res.target}: removed " + ", ".join(actions)
+            lines = [f"  • commands ({len(res.commands_removed)}):"] + [f"      - {_short_path(p)}" for p in res.commands_removed]
+            sections.append("\n".join(lines))
+
+        if sections:
+            return f"{res.target}: removed\n" + "\n".join(sections)
         return f"{res.target}: nothing to remove"
 
     if target is None:

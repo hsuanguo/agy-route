@@ -157,6 +157,8 @@ class ClaudeTarget(Target):
             hook_installed=hook_installed,
             plugin_installed=False,
             commands_installed=commands_installed,
+            skill_paths=skill_paths,
+            hook_path=str(self.hook_config_path) if hook_installed else None,
             skill_changed=skill_changed_any,
             hook_changed=hook_changed,
         )
