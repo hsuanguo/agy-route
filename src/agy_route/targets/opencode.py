@@ -6,7 +6,7 @@ from pathlib import Path
 
 from agy_route.core.resources import read_package_resource
 from agy_route.specs import COMMAND_SPECS
-from agy_route.targets.base import Target, TargetInstallResult
+from agy_route.targets.base import Target, TargetInstallResult, TargetUninstallResult
 
 
 class OpenCodeTarget(Target):
@@ -109,29 +109,36 @@ class OpenCodeTarget(Target):
         *,
         skills: tuple[str, ...] = ("agy-web-search", "agy-route-research"),
         namespace: str = "agy-route",
-    ) -> tuple[bool, bool]:
-        skill_removed_count = 0
+    ) -> TargetUninstallResult:
+        skills_removed: list[str] = []
         for skill_name in skills:
             dst_dir = self.home / ".claude" / "skills" / skill_name
             if dst_dir.is_dir():
                 shutil.rmtree(dst_dir)
-                skill_removed_count += 1
+                skills_removed.append(str(dst_dir))
 
         plugin = self.config_dir / "plugins" / "agy-route.js"
         cmds_dir = self.config_dir / "commands"
-        plugin_or_cmds_removed = False
+        plugin_removed = False
+        commands_removed: list[str] = []
 
         if plugin.is_file():
             plugin.unlink()
-            plugin_or_cmds_removed = True
+            plugin_removed = True
 
         if cmds_dir.is_dir():
             for f in cmds_dir.glob("agy-*.md"):
+                commands_removed.append(str(f))
                 f.unlink()
-                plugin_or_cmds_removed = True
             try:
                 cmds_dir.rmdir()
             except OSError:
                 pass
 
-        return bool(skill_removed_count), plugin_or_cmds_removed
+        return TargetUninstallResult(
+            target=self.name,
+            skills_removed=skills_removed,
+            hook_removed=False,
+            plugin_removed=plugin_removed,
+            commands_removed=commands_removed,
+        )

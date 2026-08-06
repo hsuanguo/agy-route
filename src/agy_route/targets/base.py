@@ -23,6 +23,15 @@ class TargetInstallResult:
     message: str = ""
 
 
+@dataclass
+class TargetUninstallResult:
+    target: str
+    skills_removed: list[str] = field(default_factory=list)
+    hook_removed: bool = False
+    plugin_removed: bool = False
+    commands_removed: list[str] = field(default_factory=list)
+
+
 class Target(ABC):
     """A target agent's settings layout (skill dir + hook config path/format).
 
@@ -65,5 +74,5 @@ class Target(ABC):
         *,
         skills: tuple[str, ...] = ("agy-web-search", "agy-route-research"),
         namespace: str = "agy-route",
-    ) -> tuple[bool, bool]:
-        """Uninstall skills and hooks/plugins. Returns (skills_removed, hook_or_plugin_removed)."""
+    ) -> TargetUninstallResult:
+        """Uninstall skills, hooks, plugins, and commands for this target."""

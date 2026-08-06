@@ -34,14 +34,16 @@ def test_claude_target_install_and_uninstall(tmp_path):
     assert (tmp_path / ".claude" / "settings.json").is_file()
 
     # Uninstall
-    skills_removed, hook_removed = target.uninstall_target()
-    assert skills_removed is True
-    assert hook_removed is True
+    unres = target.uninstall_target()
+    assert len(unres.skills_removed) == 2
+    assert unres.hook_removed is True
+    assert len(unres.commands_removed) == 2
 
     # Uninstall again (idempotency check)
-    skills_removed_2, hook_removed_2 = target.uninstall_target()
-    assert skills_removed_2 is False
-    assert hook_removed_2 is False
+    unres_2 = target.uninstall_target()
+    assert len(unres_2.skills_removed) == 0
+    assert unres_2.hook_removed is False
+    assert len(unres_2.commands_removed) == 0
 
 
 def test_opencode_target_install_and_uninstall(tmp_path):
@@ -59,6 +61,7 @@ def test_opencode_target_install_and_uninstall(tmp_path):
     assert (tmp_path / ".config" / "opencode" / "commands" / "agy-search.md").is_file()
 
     # Uninstall
-    skills_removed, plugin_removed = target.uninstall_target()
-    assert skills_removed is True
-    assert plugin_removed is True
+    unres = target.uninstall_target()
+    assert len(unres.skills_removed) == 2
+    assert unres.plugin_removed is True
+    assert len(unres.commands_removed) == 2
