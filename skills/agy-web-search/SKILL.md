@@ -1,6 +1,7 @@
 ---
 name: agy-web-search
 description: Perform a grounded web search via the agy CLI (Gemini) with real source citations. Use when asked to search the web, look up current information, verify claims against live sources, or find documentation/citations.
+user-invocable: false
 ---
 
 # AGY Web Search

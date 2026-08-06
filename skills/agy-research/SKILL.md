@@ -1,6 +1,7 @@
 ---
 name: agy-research
 description: Perform multi-source deep research on a topic via agy-route research primitives (fetch + quote). Use when asked to research, investigate, do a deep dive, or gather multi-source evidence on a topic.
+user-invocable: false
 ---
 
 # AGY Route Research
