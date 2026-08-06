@@ -19,6 +19,7 @@ SKILL_BUNDLES = ("agy-web-search", "agy-research")
 def install(
     target_name: str,
     *,
+    with_hook: bool = False,
     skill_only: bool = False,
     hook_only: bool = False,
     dry_run: bool = False,
@@ -26,6 +27,7 @@ def install(
 ) -> TargetInstallResult:
     target = get_target(target_name)
     return target.install_target(
+        with_hook=with_hook,
         skill_only=skill_only,
         hook_only=hook_only,
         dry_run=dry_run,

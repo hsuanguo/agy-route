@@ -63,6 +63,7 @@ class Target(ABC):
     def install_target(
         self,
         *,
+        with_hook: bool = False,
         skill_only: bool = False,
         hook_only: bool = False,
         dry_run: bool = False,

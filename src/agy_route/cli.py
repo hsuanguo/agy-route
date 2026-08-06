@@ -89,11 +89,25 @@ def install_cmd(
         "-t",
         help="Which agent to install for (claude, opencode). Run `agy-route targets` to list.",
     ),
+    with_hook: bool = typer.Option(
+        False,
+        "--with-hook",
+        "--with-plugin",
+        help="Also install the PreToolUse hook (Claude) or JS plugin (opencode).",
+    ),
     skill_only: bool = typer.Option(
-        False, "--skill-only", help="Install only the SKILL.md, not the hook."
+        False,
+        "--skill-only",
+        "--only-skill",
+        help="Install only SKILL.md files (no slash commands or hook/plugin).",
     ),
     hook_only: bool = typer.Option(
-        False, "--hook-only", help="Install only the PreToolUse hook, not the skill."
+        False,
+        "--hook-only",
+        "--only-hook",
+        "--plugin-only",
+        "--only-plugin",
+        help="Install only the PreToolUse hook (Claude) or JS plugin (opencode).",
     ),
     dry_run: bool = typer.Option(
         False,
@@ -101,16 +115,21 @@ def install_cmd(
         help="Don't touch the filesystem; just report what would change.",
     ),
 ) -> None:
-    """Install the SKILL.md and/or PreToolUse hook into the target agent."""
+    """Install commands, SKILL.md files, and optional PreToolUse hook / plugin."""
     from agy_route import install as install_mod
 
-    if skill_only and hook_only:
-        typer.echo("agy-route install: --skill-only and --hook-only are mutually exclusive", err=True)
+    flags = [bool(with_hook), bool(skill_only), bool(hook_only)]
+    if sum(flags) > 1:
+        typer.echo("agy-route install: --with-hook, --skill-only, and --hook-only options are mutually exclusive", err=True)
         raise typer.Exit(EXIT_FAILED)
 
     try:
         result = install_mod.install(
-            target, skill_only=skill_only, hook_only=hook_only, dry_run=dry_run
+            target,
+            with_hook=with_hook,
+            skill_only=skill_only,
+            hook_only=hook_only,
+            dry_run=dry_run,
         )
     except KeyError as e:
         typer.echo(f"agy-route install: {e}", err=True)

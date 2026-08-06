@@ -80,6 +80,7 @@ class ClaudeTarget(Target):
     def install_target(
         self,
         *,
+        with_hook: bool = False,
         skill_only: bool = False,
         hook_only: bool = False,
         dry_run: bool = False,
@@ -102,14 +103,18 @@ class ClaudeTarget(Target):
         hook_changed = False
         commands_installed: list[str] = []
 
-        if not hook_only:
+        install_skills = not hook_only
+        install_commands = not hook_only and not skill_only
+        install_hook = hook_only or with_hook
+
+        if install_skills:
             for skill_name in skills:
                 content = read_package_resource("skills", skill_name, "SKILL.md")
                 dst, changed = self.install_skill_content(skill_name, content, dry_run=dry_run)
                 skill_paths.append(str(dst))
                 skill_changed_any = skill_changed_any or changed
 
-            # Install dynamically rendered Claude slash commands
+        if install_commands:
             dst_cmd_dir = self.config_dir / "commands"
             if not dry_run:
                 dst_cmd_dir.mkdir(parents=True, exist_ok=True)
@@ -123,7 +128,7 @@ class ClaudeTarget(Target):
                         dst_cmd.write_text(content)
                 commands_installed.append(str(dst_cmd))
 
-        if not skill_only:
+        if install_hook:
             hook_config_text = read_package_resource("plugins", "claude", "hooks.json")
             hook_config = json.loads(hook_config_text)
             hook_installed = True

@@ -21,16 +21,20 @@ def test_claude_target_install_and_uninstall(tmp_path):
     target = ClaudeTarget(home=tmp_path)
     assert target.is_present()
 
+    # Default install: skills + commands (no hook)
     res = target.install_target()
     assert res.skill_installed is True
-    assert res.hook_installed is True
+    assert res.hook_installed is False
     assert len(res.commands_installed) == 2
-
-    # Verify files created
     assert (tmp_path / ".claude" / "skills" / "agy-web-search" / "SKILL.md").is_file()
     assert (tmp_path / ".claude" / "skills" / "agy-research" / "SKILL.md").is_file()
     assert (tmp_path / ".claude" / "commands" / "agy-web-search.md").is_file()
     assert (tmp_path / ".claude" / "commands" / "agy-research.md").is_file()
+    assert not (tmp_path / ".claude" / "settings.json").exists()
+
+    # Install with hook
+    res_hook = target.install_target(with_hook=True)
+    assert res_hook.hook_installed is True
     assert (tmp_path / ".claude" / "settings.json").is_file()
 
     # Uninstall
@@ -50,15 +54,19 @@ def test_opencode_target_install_and_uninstall(tmp_path):
     target = OpenCodeTarget(home=tmp_path)
     assert target.is_present()
 
+    # Default install: skills + commands (no plugin)
     res = target.install_target()
     assert res.skill_installed is True
-    assert res.plugin_installed is True
+    assert res.plugin_installed is False
     assert len(res.commands_installed) == 2
-
-    # Verify files created
     assert (tmp_path / ".claude" / "skills" / "agy-web-search" / "SKILL.md").is_file()
-    assert (tmp_path / ".config" / "opencode" / "plugins" / "agy-route.js").is_file()
     assert (tmp_path / ".config" / "opencode" / "commands" / "agy-web-search.md").is_file()
+    assert not (tmp_path / ".config" / "opencode" / "plugins" / "agy-route.js").exists()
+
+    # Install with plugin
+    res_plugin = target.install_target(with_hook=True)
+    assert res_plugin.plugin_installed is True
+    assert (tmp_path / ".config" / "opencode" / "plugins" / "agy-route.js").is_file()
 
     # Uninstall
     unres = target.uninstall_target()

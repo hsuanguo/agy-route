@@ -56,13 +56,14 @@ agy models                       # should list Gemini Flash / Pro entries
 #    `agy-route-hook-pretooluse` on $PATH under ~/.local/bin):
 uv tool install git+https://github.com/hsuanguo/agy-route
 
-# 3. Drop the SKILL.md and hook into Claude Code:
-agy-route install                # SKILL.md + hook for Claude Code (default)
+# 3. Drop skills and slash commands into target agent:
+agy-route install                # skills + slash commands (default)
 # Optional flags:
-#   agy-route install --skill-only   # just the SKILL.md
-#   agy-route install --hook-only    # just the hook
-#   agy-route install --dry-run      # show what would change, no filesystem writes
-#   agy-route install --target <name>  # other targets (currently: claude only)
+#   agy-route install --with-hook   # also install PreToolUse hook (Claude) / JS plugin (opencode)
+#   agy-route install --only-skill  # just the SKILL.md files
+#   agy-route install --only-hook   # just the hook/plugin
+#   agy-route install --dry-run     # show what would change, no filesystem writes
+#   agy-route install --target <name>  # target agent (claude, opencode)
 ```
 
 That's it. Verify with:
