@@ -97,8 +97,8 @@ COMMAND_SPECS: list[CommandSpec] = [
     CommandSpec.load(
         name="agy-web-search",
         description=(
-            "Run a grounded web search via the agy CLI (Gemini, with citations). "
-            "Drop-in for Claude's built-in WebSearch tool."
+            "Grounded web search via agy CLI (Gemini). Trigger when explicitly requested, "
+            "for Gemini/Antigravity search, for a Google second opinion, or when built-in search fails."
         ),
         argument_hint="<query>",
     ),
