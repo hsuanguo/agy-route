@@ -30,6 +30,20 @@ def _load_body(name: str) -> str:
         return ""
 
 
+RESEARCH_FETCH_PROMPT_PREFIX = (
+    "Use web search for the following sub-question. Return 5-8 bullet "
+    "findings, each with the exact source URL and publication date. "
+    "Output ONLY the findings, URLs, and dates — no synthesis, no "
+    "narrative, no commentary.\n\n"
+    "Sub-question: "
+)
+
+RESEARCH_QUOTE_PROMPT_TEMPLATE = (
+    "Open {url} and quote the exact sentence(s) supporting: "
+    "'{claim}'. If the page does not support it, reply NOT SUPPORTED."
+)
+
+
 @dataclass
 class CommandSpec:
     name: str
@@ -40,6 +54,10 @@ class CommandSpec:
     opencode_agent: Optional[str] = None
     opencode_model: Optional[str] = None
     opencode_subtask: Optional[bool] = None
+
+    def __post_init__(self) -> None:
+        if not self.body and self.name:
+            self.body = _load_body(self.name)
 
     @classmethod
     def load(cls, *, name: str, description: str, **kwargs) -> "CommandSpec":

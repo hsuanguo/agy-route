@@ -1,7 +1,7 @@
 {
-  "name": "agy-web-search",
+  "name": "agy-route",
   "version": "0.4.0",
-  "description": "Route Claude Code web searches through the agy CLI (Google Antigravity / Gemini). When this plugin is enabled, Claude uses agy's grounded web search with source citations instead of its built-in WebSearch / web_search tool.",
+  "description": "Route AI coding agent web searches and deep research through the agy CLI (Google Antigravity / Gemini) across Claude Code and opencode.",
   "author": {
     "name": "agy-route contributors",
     "url": "https://github.com/hsuanguo/agy-route"

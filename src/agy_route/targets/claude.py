@@ -4,10 +4,9 @@ from __future__ import annotations
 import json
 import os
 import shutil
-from importlib import resources
 from pathlib import Path
-from typing import Any
 
+from agy_route.core.resources import read_package_resource
 from agy_route.specs import COMMAND_SPECS
 from agy_route.targets.base import Target, TargetInstallResult
 
@@ -35,7 +34,8 @@ def _write_json(path: Path, data: dict[str, Any]) -> None:
 def _backup(path: Path) -> Path | None:
     if not path.is_file():
         return None
-    bak = path.with_suffix(path.suffix + f".bak.{int(os.path.getmtime(path))}")
+    rand = os.urandom(4).hex()
+    bak = path.with_suffix(path.suffix + f".bak.{int(os.path.getmtime(path))}.{rand}")
     shutil.copy2(path, bak)
     return bak
 
@@ -104,11 +104,7 @@ class ClaudeTarget(Target):
 
         if not hook_only:
             for skill_name in skills:
-                content = (
-                    resources.files("agy_route.skills")
-                    .joinpath(skill_name, "SKILL.md")
-                    .read_text()
-                )
+                content = read_package_resource("skills", skill_name, "SKILL.md")
                 dst, changed = self.install_skill_content(skill_name, content, dry_run=dry_run)
                 skill_paths.append(str(dst))
                 skill_changed_any = skill_changed_any or changed
@@ -128,11 +124,7 @@ class ClaudeTarget(Target):
                 commands_installed.append(str(dst_cmd))
 
         if not skill_only:
-            hook_config_text = (
-                resources.files("agy_route.plugins.claude")
-                .joinpath("hooks.json")
-                .read_text()
-            )
+            hook_config_text = read_package_resource("plugins", "claude", "hooks.json")
             hook_config = json.loads(hook_config_text)
             hook_installed = True
             if not dry_run:
