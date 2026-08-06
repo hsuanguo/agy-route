@@ -40,6 +40,18 @@ def test_install_cmd_opencode_output_paths(tmp_path):
         assert "• plugin:" in res_with.stdout
 
 
+def test_install_cmd_mutually_exclusive_flags():
+    result = runner.invoke(app, ["install", "--with-hook", "--only-skill"])
+    assert result.exit_code != 0
+    assert "mutually exclusive" in result.stderr or "mutually exclusive" in result.stdout
+
+
+def test_install_cmd_invalid_target():
+    result = runner.invoke(app, ["install", "--target", "nonexistent"])
+    assert result.exit_code != 0
+    assert "unknown target" in result.stderr or "unknown target" in result.stdout
+
+
 def test_uninstall_cmd_scan_all(tmp_path):
     with patch("pathlib.Path.home", return_value=tmp_path):
         # Install first
