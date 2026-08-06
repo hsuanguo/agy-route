@@ -96,10 +96,7 @@ class CommandSpec:
 COMMAND_SPECS: list[CommandSpec] = [
     CommandSpec.load(
         name="agy-web-search",
-        description=(
-            "Grounded web search via agy CLI (Gemini). Trigger when explicitly requested, "
-            "for Gemini/Antigravity search, for a Google second opinion, or when built-in search fails."
-        ),
+        description="Run a grounded web search via the agy CLI (Gemini, with citations).",
         argument_hint="<query>",
     ),
     CommandSpec.load(
