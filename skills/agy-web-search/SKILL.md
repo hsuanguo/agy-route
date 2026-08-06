@@ -1,12 +1,20 @@
 ---
 name: agy-web-search
-description: Perform a grounded web search via the agy CLI (Gemini) with real source citations. Use when asked to search the web, look up current information, verify claims against live sources, or find documentation/citations.
+description: "Perform a grounded web search via the agy CLI (Gemini). Trigger when: (1) user explicitly asks for agy-web-search, (2) user mentions Gemini or Antigravity search, (3) a second search opinion from Google is needed, or (4) built-in search fails or returns insufficient results."
 user-invocable: false
 ---
 
 # AGY Web Search
 
 Routes web searches through `agy-route search` so queries execute on Gemini with grounded web search and return source citations.
+
+## Trigger Criteria
+
+Use this skill when:
+1. **Explicit Request**: The user explicitly asks for `agy-web-search`, `/agy-web-search`, or `agy search`.
+2. **Gemini / Antigravity Search**: The user mentions Gemini search, Google Antigravity search, or grounded search.
+3. **Second Opinion**: A second search opinion from Google is needed to cross-check or verify findings.
+4. **Fallback**: The built-in web search tool fails, times out, or returns incomplete/insufficient results.
 
 ## Usage
 
