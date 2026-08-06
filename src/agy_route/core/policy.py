@@ -1,7 +1,7 @@
 """Policy file loader for agy-route."""
 from __future__ import annotations
 
-from importlib import resources
+from agy_route.core.resources import read_package_resource
 
 _POLICY_FILES = {
     "search": "search.md",
@@ -16,12 +16,8 @@ def find_policy(name: str) -> str:
             f"unknown type {name!r}; supported: {sorted(_POLICY_FILES)}"
         )
     try:
-        return (
-            resources.files("agy_route")
-            .joinpath("config", "policies", rel)
-            .read_text()
-        )
-    except (FileNotFoundError, OSError) as e:
+        return read_package_resource("config", "policies", rel)
+    except FileNotFoundError as e:
         raise FileNotFoundError(
-            f"policy file not found for type {name!r} (looked in agy_route/config/policies/{rel})"
+            f"policy file not found for type {name!r} (looked in config/policies/{rel})"
         ) from e

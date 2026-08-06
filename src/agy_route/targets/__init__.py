@@ -26,4 +26,4 @@ def all_targets() -> Iterable[Target]:
     return [cls() for cls in _REGISTRY.values()]
 
 
-__all__ = ["Target", "TargetInstallResult", "ClaudeTarget", "OpenCodeTarget", "get", "all_targets"]
+__all__ = ["TargetInstallResult", "get", "all_targets"]

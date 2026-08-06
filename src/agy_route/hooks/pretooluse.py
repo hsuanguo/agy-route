@@ -71,9 +71,10 @@ def _coerce_query(tool_input: dict[str, Any]) -> tuple[str, bool]:
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
-    except (json.JSONDecodeError, ValueError):
-        # Malformed payload — let the original tool call proceed so we don't
-        # accidentally break Claude over a bug in our hook.
+    except (json.JSONDecodeError, ValueError) as err:
+        # Malformed payload — log to stderr and let the original tool call proceed
+        # so we don't accidentally break Claude over a bug in our hook.
+        sys.stderr.write(f"[agy-route pretooluse] warning: malformed stdin payload: {err}\n")
         json.dump({"continue": True, "suppressOutput": True}, sys.stdout)
         return 0
 

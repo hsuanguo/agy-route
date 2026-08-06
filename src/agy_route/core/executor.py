@@ -63,9 +63,6 @@ def invoke_agy(
     """
     agy_args: list[str] = ["agy", "--print"]
     if pass_model:
-        # Empirical quirk (verified on agy 1.1.1): passing `--model` causes
-        # the model to answer about the flag itself instead of the prompt.
-        # Off by default; turn on with $AGY_ROUTE_FORCE_MODEL=1.
         agy_args += ["--model", pass_model]
     if os.environ.get("AGY_SKIP_PERMISSIONS"):
         agy_args.append("--dangerously-skip-permissions")

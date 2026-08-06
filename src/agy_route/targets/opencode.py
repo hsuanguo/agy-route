@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 import shutil
-from importlib import resources
 from pathlib import Path
 
+from agy_route.core.resources import read_package_resource
 from agy_route.specs import COMMAND_SPECS
 from agy_route.targets.base import Target, TargetInstallResult
 
@@ -50,11 +50,7 @@ class OpenCodeTarget(Target):
 
         if not hook_only:
             for skill_name in skills:
-                content = (
-                    resources.files("agy_route.skills")
-                    .joinpath(skill_name, "SKILL.md")
-                    .read_text()
-                )
+                content = read_package_resource("skills", skill_name, "SKILL.md")
                 dst_dir = self.home / ".claude" / "skills" / skill_name
                 dst = dst_dir / "SKILL.md"
                 same_content = dst.is_file() and dst.read_text() == content
@@ -67,11 +63,8 @@ class OpenCodeTarget(Target):
 
         if not skill_only:
             # Install plugin JS
-            plugin_bytes = (
-                resources.files("agy_route.plugins.opencode")
-                .joinpath("agy-route.js")
-                .read_bytes()
-            )
+            plugin_text = read_package_resource("plugins", "opencode", "agy-route.js")
+            plugin_bytes = plugin_text.encode("utf-8")
             dst_plugin_dir = self.config_dir / "plugins"
             dst_plugin = dst_plugin_dir / "agy-route.js"
             plugin_same = (

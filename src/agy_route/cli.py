@@ -31,6 +31,10 @@ from agy_route.core.executor import (
 )
 from agy_route.core.models import ResolvedModel, resolve_model
 from agy_route.core.policy import find_policy
+from agy_route.specs import (
+    RESEARCH_FETCH_PROMPT_PREFIX,
+    RESEARCH_QUOTE_PROMPT_TEMPLATE,
+)
 
 app = typer.Typer(
     name="agy-route",
@@ -75,7 +79,7 @@ def install_cmd(
         "claude",
         "--target",
         "-t",
-        help="Which agent to install for (claude, opencode, …). Run `agy-route targets` to list.",
+        help="Which agent to install for (claude, opencode). Run `agy-route targets` to list.",
     ),
     skill_only: bool = typer.Option(
         False, "--skill-only", help="Install only the SKILL.md, not the hook."
@@ -118,8 +122,13 @@ def install_cmd(
         actions = []
         if not hook_only and result.skill_path:
             actions.append(f"skill → {result.skill_path}")
-        if not skill_only and (result.hook_installed or result.plugin_installed):
-            actions.append(f"hook/plugin → {target}")
+        if not skill_only:
+            if result.hook_installed:
+                actions.append(f"hook → {target}")
+            if result.plugin_installed:
+                actions.append(f"plugin → {target}")
+        if result.commands_installed:
+            actions.append(f"commands → {'; '.join(result.commands_installed)}")
         if actions:
             typer.echo("installed: " + "; ".join(actions))
         else:
@@ -244,13 +253,6 @@ def research_fetch_cmd(
     verbose: bool = typer.Option(False, "--verbose"),
 ) -> None:
     """Fan-out sub-question search via agy. Returns 5-8 bullet findings + URLs + dates."""
-    prompt_prefix = (
-        "Use web search for the following sub-question. Return 5-8 bullet "
-        "findings, each with the exact source URL and publication date. "
-        "Output ONLY the findings, URLs, and dates — no synthesis, no "
-        "narrative, no commentary.\n\n"
-        "Sub-question: "
-    )
     _run(
         type_name="search",
         prompt=sub_question,
@@ -260,7 +262,7 @@ def research_fetch_cmd(
         log_file=log_file,
         as_json=as_json,
         verbose=verbose,
-        prompt_prefix=prompt_prefix,
+        prompt_prefix=RESEARCH_FETCH_PROMPT_PREFIX,
     )
 
 
@@ -275,10 +277,7 @@ def research_quote_cmd(
     verbose: bool = typer.Option(False, "--verbose"),
 ) -> None:
     """Open <url> and quote the verbatim sentence(s) supporting <claim>."""
-    prompt = (
-        f"Open {url} and quote the exact sentence(s) supporting: "
-        f"'{claim}'. If the page does not support it, reply NOT SUPPORTED."
-    )
+    prompt = RESEARCH_QUOTE_PROMPT_TEMPLATE.format(url=url, claim=claim)
     _run(
         type_name="search",
         prompt=prompt,
@@ -421,10 +420,7 @@ def _run(
     full_prompt = build_full_prompt(policy_text, prompt, prefix=prompt_prefix)
 
     # Invoke agy.
-    pass_model = (
-        resolved.name if (resolved.name and os.environ.get("AGY_ROUTE_FORCE_MODEL"))
-        else None
-    )
+    pass_model = resolved.name if resolved.name else None
     start = time.monotonic()
     code, stdout, stderr = invoke_agy(
         full_prompt,

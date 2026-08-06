@@ -20,7 +20,6 @@ This document serves as the guide for AI coding assistants (agents) operating on
 agy-route/
 ├── assets/                          # SVG brand assets (logo, icon)
 ├── tools/                           # Code & asset generator scripts
-│   ├── generate_commands.py         # Validates command specs in src/agy_route/specs/ (--check supported)
 │   └── generate_logo.py             # Regenerates SVG brand assets from letterforms
 ├── plugins/                         # Target plugin assets
 │   ├── claude/                      # Claude Code PreToolUse hook configuration (hooks.json)
@@ -37,6 +36,7 @@ agy-route/
 │   │   ├── command_specs.py         # CommandSpec dataclass + render_claude() / render_opencode()
 │   │   └── bodies/                  # Markdown command body templates (agy-search.md, agy-research.md)
 │   └── targets/                     # Polymorphic Target ABC abstractions (claude.py, opencode.py)
+├── tests/                           # Pytest unit test suite
 └── pyproject.toml                   # Hatchling build configuration & console script entrypoints
 ```
 
@@ -82,10 +82,10 @@ agy-route types
 agy-route search "Antigravity CLI"
 ```
 
-### Command Specs & Asset Maintenance
+### Running Test Suite & Asset Maintenance
 ```bash
-# Validate slash command specs in src/agy_route/specs/
-python3 tools/generate_commands.py --check
+# Run pytest unit test suite
+uv run --with pytest pytest
 
 # Regenerate brand logo and icon SVGs
 python3 tools/generate_logo.py
