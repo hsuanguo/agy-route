@@ -10,7 +10,7 @@ This document serves as the guide for AI coding assistants (agents) operating on
 
 ### Key Surfaces Today
 - **`agy-web-search`**: Single-shot grounded web search via `PreToolUse` hook (Claude Code) or JS plugin (opencode), redirecting `websearch` tool calls to `agy-route search`.
-- **`agy-route-research`**: Multi-source deep-research recipe using `agy-route research fetch` (fan-out) and `agy-route research quote` (URL claim verification), exposed via `/agy-research`.
+- **`agy-research`**: Multi-source deep-research recipe using `agy-route research fetch` (fan-out) and `agy-route research quote` (URL claim verification), exposed via `/agy-research`.
 
 ---
 

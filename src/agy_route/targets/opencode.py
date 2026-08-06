@@ -29,7 +29,7 @@ class OpenCodeTarget(Target):
         skill_only: bool = False,
         hook_only: bool = False,
         dry_run: bool = False,
-        skills: tuple[str, ...] = ("agy-web-search", "agy-route-research"),
+        skills: tuple[str, ...] = ("agy-web-search", "agy-research"),
         namespace: str = "agy-route",
     ) -> TargetInstallResult:
         if not self.is_present():
@@ -109,7 +109,7 @@ class OpenCodeTarget(Target):
     def uninstall_target(
         self,
         *,
-        skills: tuple[str, ...] = ("agy-web-search", "agy-route-research"),
+        skills: tuple[str, ...] = ("agy-web-search", "agy-research"),
         namespace: str = "agy-route",
     ) -> TargetUninstallResult:
         skills_removed: list[str] = []

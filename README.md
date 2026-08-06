@@ -15,7 +15,7 @@ surfaces today:
   (Claude Code) or JS plugin (opencode) intercepts the agent's `websearch`
   tool calls and reroutes them to `agy-route search`, which uses agy's
   `search_web` with real source citations.
-- **`agy-route-research`** — multi-source deep research. Claude plans,
+- **`agy-research`** — multi-source deep research. Claude plans,
   fans out sub-questions via `agy-route research fetch`, verifies each
   load-bearing claim by URL-quote via `agy-route research quote`, then
   synthesizes a cited report. Run with `/agy-research <topic>`.
@@ -203,18 +203,14 @@ opencode-commands/
   agy-search.md               # generated from tools/bodies/ (opencode-flavored frontmatter)
   agy-research.md             # generated from tools/bodies/
 skills/
-  agy-web-search/SKILL.md     # intent-surface skill (hook is the tool-call surface)
-  agy-route-research/SKILL.md # deep-research skill
+  agy-web-search/SKILL.md     # single-shot web search skill
+  agy-research/SKILL.md       # deep-research skill
+plugins/
+  claude/hooks.json           # Claude Code PreToolUse hook configuration
+  opencode/agy-route.js       # opencode JS plugin
 src/agy_route/
-  cli.py                      # Typer app: search / research / types / targets / install / uninstall
-  install.py                  # orchestrator for `agy-route install/uninstall`
-  install_data/
-    skill.md                  # mirror of skills/agy-web-search/SKILL.md
-    skill-research.md         # mirror of skills/agy-route-research/SKILL.md
-    hooks.json                # mirror of hooks/hooks.json (Claude PreToolUse hook config)
-    opencode-plugin/agy-route.js
-    opencode-commands/agy-search.md
-    opencode-commands/agy-research.md
+  cli.py                      # Typer CLI app entry point
+  install.py                  # orchestrator for target installation & uninstallation
   targets/
     base.py                   # Target ABC
     claude.py                 # Claude Code target (~/.claude/ + settings.json)
