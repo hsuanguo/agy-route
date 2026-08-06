@@ -129,14 +129,29 @@ class ClaudeTarget(Target):
                 commands_installed.append(str(dst_cmd))
 
         if install_hook:
-            hook_config_text = read_package_resource("plugins", "claude", "hooks.json")
-            hook_config = json.loads(hook_config_text)
+            settings_text = read_package_resource("plugins", "claude", "claude-settings.json")
+            settings = json.loads(settings_text)
             hook_installed = True
             if not dry_run:
                 self.config_dir.mkdir(parents=True, exist_ok=True)
                 current = _read_json(self.hook_config_path)
+
+                # Merge the `permissions.allow` block. Namespace each entry
+                # so re-runs are idempotent and uninstall can clean them up.
+                if "permissions" in settings or "permissions" in settings.get("permissions", {}):
+                    pass
+                new_allow = settings.get("permissions", {}).get("allow", [])
+                if new_allow:
+                    current_perms = current.setdefault("permissions", {})
+                    existing_allow = current_perms.setdefault("allow", [])
+                    for entry in new_allow:
+                        if entry not in existing_allow:
+                            existing_allow.append(entry)
+
+                # Merge the `hooks.PreToolUse` block. Replace-only our entries,
+                # preserve any unrelated hooks the user already has.
                 new_entries = []
-                for raw in hook_config.get("hooks", {}).get("PreToolUse", []):
+                for raw in settings.get("hooks", {}).get("PreToolUse", []):
                     entry = json.loads(json.dumps(raw))
                     self._tag(entry, namespace)
                     new_entries.append(entry)
@@ -195,11 +210,31 @@ class ClaudeTarget(Target):
         hook_removed = False
         if self.hook_config_path.is_file():
             current = _read_json(self.hook_config_path)
+            changed = False
+
+            # Strip our permissions.allow entries.
+            allow = current.get("permissions", {}).get("allow", [])
+            if isinstance(allow, list):
+                # We don't namespace permissions.allow entries (they're
+                # plain strings, not objects), so we match by prefix:
+                # every entry beginning with "Bash(agy-route".
+                new_allow = [
+                    e for e in allow
+                    if not (isinstance(e, str) and e.startswith("Bash(agy-route"))
+                ]
+                if new_allow != allow:
+                    current.setdefault("permissions", {})["allow"] = new_allow
+                    changed = True
+
+            # Strip our hooks.PreToolUse entries (matched by _meta.agy_route).
             hooks = current.get("hooks") or {}
             pretooluse = hooks.get("PreToolUse") or []
             if isinstance(pretooluse, list) and self._our_entries(pretooluse, namespace):
                 for i in reversed(self._our_entries(pretooluse, namespace)):
                     del pretooluse[i]
+                changed = True
+
+            if changed:
                 _backup(self.hook_config_path)
                 _write_json(self.hook_config_path, current)
                 hook_removed = True

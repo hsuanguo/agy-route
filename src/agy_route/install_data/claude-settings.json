@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(agy-route search *)",
+      "Bash(agy-route research *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "agy-route-hook-pretooluse",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
