@@ -23,15 +23,18 @@ def test_claude_target_install_and_uninstall(tmp_path):
     target = ClaudeTarget(home=tmp_path)
     assert target.is_present()
 
-    # Default install: skills + commands + permissions.allow (no hook, no deny)
+    # Default install: skills + permissions.allow (no hook, no commands, no deny)
     res = target.install_target()
     assert res.skill_installed is True
     assert res.hook_installed is False
-    assert len(res.commands_installed) == 2
-    assert (tmp_path / ".claude" / "skills" / "agy-web-search" / "SKILL.md").is_file()
-    assert (tmp_path / ".claude" / "skills" / "agy-research" / "SKILL.md").is_file()
-    assert (tmp_path / ".claude" / "commands" / "agy-web-search.md").is_file()
-    assert (tmp_path / ".claude" / "commands" / "agy-research.md").is_file()
+    assert len(res.commands_installed) == 0
+    web_skill = tmp_path / ".claude" / "skills" / "agy-web-search" / "SKILL.md"
+    res_skill = tmp_path / ".claude" / "skills" / "agy-research" / "SKILL.md"
+    assert web_skill.is_file()
+    assert res_skill.is_file()
+    assert "user-invocable: true" in web_skill.read_text()
+    assert "user-invocable: true" in res_skill.read_text()
+    assert not (tmp_path / ".claude" / "commands").exists()
     assert (tmp_path / ".claude" / "settings.json").is_file()
     settings_default = json.loads((tmp_path / ".claude" / "settings.json").read_text())
     assert "Bash(agy-route search *)" in settings_default.get("permissions", {}).get("allow", [])
@@ -53,7 +56,7 @@ def test_claude_target_install_and_uninstall(tmp_path):
     unres = target.uninstall_target()
     assert len(unres.skills_removed) == 2
     assert unres.hook_removed is True
-    assert len(unres.commands_removed) == 2
+    assert len(unres.commands_removed) == 0
     after_unres_data = json.loads((tmp_path / ".claude" / "settings.json").read_text())
     assert "WebSearch" not in after_unres_data.get("permissions", {}).get("deny", [])
     assert "Bash(agy-route search *)" not in after_unres_data.get("permissions", {}).get("allow", [])

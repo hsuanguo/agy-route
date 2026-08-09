@@ -1,13 +1,13 @@
-"""Claude Code target — drop skills into ~/.claude/skills/, commands into ~/.claude/commands/, merge hooks into ~/.claude/settings.json."""
+"""Claude Code target — drop skills into ~/.claude/skills/ (with user-invocable: true), merge hooks into ~/.claude/settings.json."""
 from __future__ import annotations
 
 import json
 import os
 import shutil
 from pathlib import Path
+from typing import Any
 
 from agy_route.core.resources import read_package_resource
-from agy_route.specs import COMMAND_SPECS
 from agy_route.targets.base import Target, TargetInstallResult, TargetUninstallResult
 
 
@@ -40,9 +40,19 @@ def _backup(path: Path) -> Path | None:
     return bak
 
 
+def _inject_user_invocable(content: str) -> str:
+    if "user-invocable:" in content:
+        return content
+    parts = content.split("---", 2)
+    if len(parts) >= 3:
+        frontmatter = parts[1].rstrip()
+        return f"---{frontmatter}\nuser-invocable: true\n---{parts[2]}"
+    return content
+
+
 class ClaudeTarget(Target):
     name = "claude"
-    description = "Claude Code — ~/.claude/{skills,commands}/ + ~/.claude/settings.json"
+    description = "Claude Code — ~/.claude/skills/ + ~/.claude/settings.json"
     skill_subdir = "skills"
     hook_config_format = "json"
 
@@ -70,11 +80,12 @@ class ClaudeTarget(Target):
     def install_skill_content(self, skill_name: str, content: str, dry_run: bool = False) -> tuple[Path, bool]:
         dst_dir = self.config_dir / self.skill_subdir / skill_name
         dst = dst_dir / "SKILL.md"
-        same_content = dst.is_file() and dst.read_text() == content
+        claude_content = _inject_user_invocable(content)
+        same_content = dst.is_file() and dst.read_text() == claude_content
         if not dry_run:
             dst_dir.mkdir(parents=True, exist_ok=True)
             if not same_content:
-                dst.write_text(content)
+                dst.write_text(claude_content)
         return dst, not same_content
 
     def install_target(
@@ -102,10 +113,8 @@ class ClaudeTarget(Target):
         skill_changed_any = False
         hook_installed = False
         hook_changed = False
-        commands_installed: list[str] = []
 
         install_skills = not hook_only
-        install_commands = not hook_only and not skill_only
         install_hook = hook_only or with_hook
 
         if install_skills:
@@ -114,20 +123,6 @@ class ClaudeTarget(Target):
                 dst, changed = self.install_skill_content(skill_name, content, dry_run=dry_run)
                 skill_paths.append(str(dst))
                 skill_changed_any = skill_changed_any or changed
-
-        if install_commands:
-            dst_cmd_dir = self.config_dir / "commands"
-            if not dry_run:
-                dst_cmd_dir.mkdir(parents=True, exist_ok=True)
-
-            for spec in COMMAND_SPECS:
-                dst_cmd = dst_cmd_dir / f"{spec.name}.md"
-                content = spec.render_claude()
-                same_content = dst_cmd.is_file() and dst_cmd.read_text() == content
-                if not dry_run:
-                    if not same_content:
-                        dst_cmd.write_text(content)
-                commands_installed.append(str(dst_cmd))
 
         if not dry_run:
             self.config_dir.mkdir(parents=True, exist_ok=True)
@@ -182,7 +177,7 @@ class ClaudeTarget(Target):
             skill_path="; ".join(skill_paths) if skill_paths else None,
             hook_installed=hook_installed,
             plugin_installed=False,
-            commands_installed=commands_installed,
+            commands_installed=[],
             skill_paths=skill_paths,
             hook_path=str(self.hook_config_path) if hook_installed else None,
             skill_changed=skill_changed_any,
@@ -221,9 +216,6 @@ class ClaudeTarget(Target):
             # Strip our permissions.allow entries.
             allow = current.get("permissions", {}).get("allow", [])
             if isinstance(allow, list):
-                # We don't namespace permissions.allow entries (they're
-                # plain strings, not objects), so we match by prefix:
-                # every entry beginning with "Bash(agy-route".
                 new_allow = [
                     e for e in allow
                     if not (isinstance(e, str) and e.startswith("Bash(agy-route"))
