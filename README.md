@@ -18,11 +18,7 @@ This is the first plugin in the [`agy-route`](.) repo. Future plugins (review, c
 
 ## Install
 
-Choose one of two installation methods depending on your workflow:
-
-### Option 1: Direct CLI Install (Recommended)
-
-Quick, lightweight setup. Drops skills, slash commands, and hooks directly into your target agent's configuration directory (`~/.claude/` or `~/.config/opencode/`). No marketplace registry needed.
+Quick, target-aware setup. Drops skills, slash commands, and hooks directly into your target agent's configuration directory (`~/.claude/` or `~/.config/opencode/`).
 
 ```bash
 # 1. Install the agy CLI and authenticate (https://antigravity.google/docs/cli-using):
@@ -42,27 +38,6 @@ agy-route install --target claude        # target agent: claude (default) or ope
 #   agy-route install --dry-run             # preview changes without writing files
 ```
 
-### Option 2: Claude Code Marketplace Install
-
-Use this path if you prefer managing plugins via Claude Code's native `/plugin` system (provides versioned `/plugin update` and `/plugin marketplace browse`).
-
-```bash
-# 1. Install `agy-route` as a uv tool:
-uv tool install git+https://github.com/hsuanguo/agy-route
-
-# 2. Add the marketplace registry inside Claude Code:
-/plugin marketplace add https://github.com/hsuanguo/agy-route
-
-# 3. Install skills and slash commands (/agy-web-search, /agy-research):
-/plugin install agy-route
-
-# Optional add-ons:
-/plugin install agy-route-hook                # PreToolUse hook to intercept WebSearch
-/plugin install agy-route-disable-websearch    # Hard-deny native WebSearch in permissions
-```
-
-> **Note:** You can switch between installation paths at any time — `agy-route uninstall` reverses Option 1, and `/plugin uninstall agy-route` (or `/plugin uninstall agy-route-hook`) reverses Option 2. The two paths do not conflict and are idempotent.
-
 ### Verification
 
 Verify with:
@@ -72,7 +47,7 @@ agy-route types
 agy-route search "latest Antigravity CLI release"
 ```
 
-The hook is wired automatically. You can confirm by asking Claude a question that would normally trigger a web search; the response will cite Gemini-grounded URLs.
+The hook is wired automatically if `--with-hook` is used. You can confirm by asking Claude a question that would normally trigger a web search; the response will cite Gemini-grounded URLs.
 
 ## Usage
 
@@ -146,17 +121,11 @@ uv tool install --force --from git+https://github.com/hsuanguo/agy-route agy-rou
 ## Uninstall
 
 ```bash
-# Reverse the lite install:
 agy-route uninstall                # removes SKILL.md + hook/plugin for every registered target
 agy-route uninstall --target claude    # restrict to one target
 agy-route uninstall --target opencode  # restrict to one target
 uv tool uninstall agy-route
-
-# Reverse the marketplace install (if you used it):
-/plugin uninstall agy-web-search
 ```
-
-The two paths don't conflict — uninstall each one you actually used.
 
 ## Layout
 
@@ -164,14 +133,12 @@ The two paths don't conflict — uninstall each one you actually used.
 assets/
   logo.svg                    # horizontal lockup (icon + wordmark)
   icon.svg                    # icon only (favicon / social-card)
-.claude-plugin/
-  plugin.json                 # plugin manifest (skills + hooks)
-  marketplace.json            # marketplace entry (for /plugin marketplace add — opt-in)
 skills/
   agy-web-search/SKILL.md     # single-shot web search skill
   agy-research/SKILL.md       # deep-research skill
 plugins/
-  claude/hooks.json           # Claude Code PreToolUse hook configuration
+  claude/claude-settings.json # Claude Code settings (permissions & hooks)
+  claude/claude-permissions.json # Claude Code auto-approval permissions
   opencode/agy-route.js       # opencode JS plugin
 src/agy_route/
   cli.py                      # Typer CLI app entry point
