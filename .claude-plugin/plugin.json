@@ -23,6 +23,5 @@
   "commands": [
     "./commands/agy-web-search.md",
     "./commands/agy-research.md"
-  ],
-  "hooks": "./plugins/claude/claude-settings.json"
+  ]
 }

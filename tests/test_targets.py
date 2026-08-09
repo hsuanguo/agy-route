@@ -73,3 +73,49 @@ def test_opencode_target_install_and_uninstall(tmp_path):
     assert len(unres.skills_removed) == 2
     assert unres.plugin_removed is True
     assert len(unres.commands_removed) == 2
+
+
+def test_claude_target_preserves_existing_settings(tmp_path):
+    import json
+
+    # Setup pre-existing ~/.claude/settings.json with custom hook and permission
+    settings_file = tmp_path / ".claude" / "settings.json"
+    settings_file.parent.mkdir(parents=True, exist_ok=True)
+    initial_content = {
+        "permissions": {
+            "allow": ["Bash(git status)"]
+        },
+        "hooks": {
+            "PreToolUse": [
+                {"matcher": "Bash", "hooks": [{"type": "command", "command": "my-custom-hook"}]}
+            ]
+        }
+    }
+    settings_file.write_text(json.dumps(initial_content, indent=2))
+
+    target = ClaudeTarget(home=tmp_path)
+
+    # 1. Install with hook
+    target.install_target(with_hook=True)
+
+    # Verify both pre-existing entries AND agy-route entries exist
+    current = json.loads(settings_file.read_text())
+    assert "Bash(git status)" in current["permissions"]["allow"]
+    assert "Bash(agy-route search *)" in current["permissions"]["allow"]
+
+    pretooluse_matchers = [entry["matcher"] for entry in current["hooks"]["PreToolUse"]]
+    assert "Bash" in pretooluse_matchers
+    assert "WebSearch" in pretooluse_matchers
+
+    # 2. Uninstall
+    target.uninstall_target()
+
+    # Verify pre-existing entries remain intact, while agy-route entries are stripped
+    after_uninstall = json.loads(settings_file.read_text())
+    assert "Bash(git status)" in after_uninstall["permissions"]["allow"]
+    assert "Bash(agy-route search *)" not in after_uninstall["permissions"]["allow"]
+
+    remaining_matchers = [entry["matcher"] for entry in after_uninstall["hooks"]["PreToolUse"]]
+    assert "Bash" in remaining_matchers
+    assert "WebSearch" not in remaining_matchers
+
