@@ -17,5 +17,18 @@
     "pretooluse",
     "claude-code-plugin"
   ],
-  "hooks": "../../claude-settings.json"
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "agy-route-hook-pretooluse",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
 }

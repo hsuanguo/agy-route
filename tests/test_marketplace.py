@@ -37,7 +37,8 @@ def test_base_plugin_manifest():
     assert data.get("name") == "agy-route"
     assert "skills" in data
     assert "commands" in data
-    assert "hooks" in data
+    assert "permissions" in data
+    assert "hooks" not in data
 
     for skill_rel in data["skills"]:
         skill_path = (base_path.parent / skill_rel).resolve()
@@ -47,17 +48,11 @@ def test_base_plugin_manifest():
         cmd_path = (base_path.parent / cmd_rel).resolve()
         assert cmd_path.is_file(), f"Command file {cmd_path} does not exist"
 
-    # Verify permissions are configured
-    hooks_rel = data["hooks"]
-    perm_path = (base_path.parent / hooks_rel).resolve()
-    assert perm_path.is_file(), f"Permissions file {perm_path} does not exist"
-    perm_data = json.loads(perm_path.read_text())
-    assert "permissions" in perm_data
-    assert "allow" in perm_data["permissions"]
-    assert "Bash(agy-route search *)" in perm_data["permissions"]["allow"]
-    assert "Bash(agy-route research *)" in perm_data["permissions"]["allow"]
-    # Ensure NO PreToolUse hook in base plugin
-    assert "hooks" not in perm_data
+    # Verify inline permissions object
+    perms = data["permissions"]
+    assert "allow" in perms
+    assert "Bash(agy-route search *)" in perms["allow"]
+    assert "Bash(agy-route research *)" in perms["allow"]
 
 
 def test_hook_plugin_manifest():
@@ -68,13 +63,10 @@ def test_hook_plugin_manifest():
 
     assert data.get("name") == "agy-route-hook"
     assert "hooks" in data
+    assert isinstance(data["hooks"], dict)
 
-    hooks_rel = data["hooks"]
-    settings_path = (hook_path.parent / hooks_rel).resolve()
-    assert settings_path.is_file(), f"Hooks settings file {settings_path} does not exist"
-    settings_data = json.loads(settings_path.read_text())
-    assert "hooks" in settings_data
-    assert "PreToolUse" in settings_data["hooks"]
-    matcher_entries = settings_data["hooks"]["PreToolUse"]
+    hooks_obj = data["hooks"]
+    assert "PreToolUse" in hooks_obj
+    matcher_entries = hooks_obj["PreToolUse"]
     matchers = [entry.get("matcher") for entry in matcher_entries if isinstance(entry, dict)]
     assert "WebSearch" in matchers

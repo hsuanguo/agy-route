@@ -24,5 +24,10 @@
     "../../commands/agy-web-search.md",
     "../../commands/agy-research.md"
   ],
-  "hooks": "../../claude-permissions.json"
+  "permissions": {
+    "allow": [
+      "Bash(agy-route search *)",
+      "Bash(agy-route research *)"
+    ]
+  }
 }

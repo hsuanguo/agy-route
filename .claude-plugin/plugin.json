@@ -23,5 +23,11 @@
   "commands": [
     "../plugins/claude/commands/agy-web-search.md",
     "../plugins/claude/commands/agy-research.md"
-  ]
+  ],
+  "permissions": {
+    "allow": [
+      "Bash(agy-route search *)",
+      "Bash(agy-route research *)"
+    ]
+  }
 }
