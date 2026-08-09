@@ -69,7 +69,7 @@ Once installed (`agy-route install --target <claude|opencode>`), web searches ar
    * **Claude Code**: A `PreToolUse` hook automatically intercepts standard `WebSearch` tool calls and reroutes them to `agy-route search`.
    * **opencode**: A JS plugin (`agy-route.js`) automatically intercepts opencode's native `websearch` tool calls and reroutes them to `agy-route search`.
 
-> **Tip:** Pass `--disable-websearch` during install (`agy-route install --disable-websearch`) to hard-deny native `WebSearch` in permissions, ensuring 100% of web searches run through `agy-route`.
+> **Tip:** If you prefer not to install the hook, pass `--disable-websearch` during install (`agy-route install --disable-websearch`) to hard-deny native `WebSearch` in permissions, forcing the agent to route 100% of web searches through `Skill(agy-web-search)` and slash commands.
 
 ### From any shell
 
