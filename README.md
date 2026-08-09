@@ -51,13 +51,25 @@ The hook is wired automatically if `--with-hook` is used. You can confirm by ask
 
 ## Usage
 
-### From Claude Code
+### From Claude Code & opencode
 
-Once the plugin is enabled, **every `WebSearch` is automatically routed through `agy-route search`** by the hook. To force an explicit search:
+Once installed (`agy-route install --target <claude|opencode>`), web searches are executed in three ways:
 
-```
-/agy-web-search "Claude API pricing June 2026"
-```
+1. **Automatic Skill Triggering** (Default)  
+   The agent automatically detects search intent and loads `Skill(agy-web-search)`, executing the query through `agy-route search` via Bash.
+
+2. **Explicit Slash Commands**  
+   Force search or deep-research directly from the chat prompt:
+   ```text
+   /agy-web-search "Claude API pricing 2026"
+   /agy-research "Quantum computing breakthroughs"
+   ```
+
+3. **Automatic Tool Interception** (When installed with `--with-hook`)  
+   * **Claude Code**: A `PreToolUse` hook automatically intercepts standard `WebSearch` tool calls and reroutes them to `agy-route search`.
+   * **opencode**: A JS plugin (`agy-route.js`) automatically intercepts opencode's native `websearch` tool calls and reroutes them to `agy-route search`.
+
+> **Tip:** Pass `--disable-websearch` during install (`agy-route install --disable-websearch`) to hard-deny native `WebSearch` in permissions, ensuring 100% of web searches run through `agy-route`.
 
 ### From any shell
 
