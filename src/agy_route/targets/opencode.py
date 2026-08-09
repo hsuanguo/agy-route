@@ -1,12 +1,44 @@
-"""opencode target — drop skills + plugin + commands into the user's opencode config dir."""
+"""opencode target — drop skills + plugin + commands + auto-approval permissions into the user's opencode config dir."""
 from __future__ import annotations
 
+import json
+import os
 import shutil
 from pathlib import Path
+from typing import Any
 
 from agy_route.core.resources import read_package_resource
 from agy_route.specs import COMMAND_SPECS
 from agy_route.targets.base import Target, TargetInstallResult, TargetUninstallResult
+
+
+def _read_json(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    try:
+        with path.open() as fh:
+            data = json.load(fh)
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _write_json(path: Path, data: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with tmp.open("w") as fh:
+        json.dump(data, fh, indent=2, ensure_ascii=False)
+        fh.write("\n")
+    tmp.replace(path)
+
+
+def _backup(path: Path) -> Path | None:
+    if not path.is_file():
+        return None
+    rand = os.urandom(4).hex()
+    bak = path.with_suffix(path.suffix + f".bak.{int(os.path.getmtime(path))}.{rand}")
+    shutil.copy2(path, bak)
+    return bak
 
 
 class OpenCodeTarget(Target):
@@ -29,6 +61,7 @@ class OpenCodeTarget(Target):
         with_hook: bool = False,
         skill_only: bool = False,
         hook_only: bool = False,
+        disable_websearch: bool = False,
         dry_run: bool = False,
         skills: tuple[str, ...] = ("agy-web-search", "agy-research"),
         namespace: str = "agy-route",
@@ -98,6 +131,32 @@ class OpenCodeTarget(Target):
             else:
                 plugin_changed = not plugin_same
 
+        # Always merge auto-approval permissions into ~/.config/opencode/opencode.json
+        if not dry_run:
+            self.config_dir.mkdir(parents=True, exist_ok=True)
+            config_file = self.config_dir / "opencode.json"
+            current = _read_json(config_file)
+
+            permission = current.setdefault("permission", {})
+            if not isinstance(permission, dict):
+                permission = {}
+                current["permission"] = permission
+
+            bash_perms = permission.setdefault("bash", {})
+            if not isinstance(bash_perms, dict):
+                bash_perms = {}
+                permission["bash"] = bash_perms
+
+            changed = False
+            for key in ["agy-route search *", "agy-route research *"]:
+                if bash_perms.get(key) != "allow":
+                    bash_perms[key] = "allow"
+                    changed = True
+
+            if changed:
+                _backup(config_file)
+                _write_json(config_file, current)
+
         return TargetInstallResult(
             target=self.name,
             skill_installed=bool(skill_paths),
@@ -141,6 +200,24 @@ class OpenCodeTarget(Target):
                 cmds_dir.rmdir()
             except OSError:
                 pass
+
+        # Strip our permission entries from opencode.json
+        config_file = self.config_dir / "opencode.json"
+        if config_file.is_file():
+            current = _read_json(config_file)
+            permission = current.get("permission")
+            if isinstance(permission, dict):
+                bash_perms = permission.get("bash")
+                if isinstance(bash_perms, dict):
+                    changed = False
+                    for key in ["agy-route search *", "agy-route research *"]:
+                        if key in bash_perms:
+                            del bash_perms[key]
+                            changed = True
+
+                    if changed:
+                        _backup(config_file)
+                        _write_json(config_file, current)
 
         return TargetUninstallResult(
             target=self.name,

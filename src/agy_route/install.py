@@ -22,6 +22,7 @@ def install(
     with_hook: bool = False,
     skill_only: bool = False,
     hook_only: bool = False,
+    disable_websearch: bool = False,
     dry_run: bool = False,
     skills: tuple[str, ...] = SKILL_BUNDLES,
 ) -> TargetInstallResult:
@@ -30,6 +31,7 @@ def install(
         with_hook=with_hook,
         skill_only=skill_only,
         hook_only=hook_only,
+        disable_websearch=disable_websearch,
         dry_run=dry_run,
         skills=skills,
         namespace=NAMESPACE,

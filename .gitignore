@@ -10,5 +10,6 @@ build/
 uv.lock
 
 # Generated slash commands (rendered dynamically by agy-route CLI)
-commands/
-opencode-commands/
+/commands/
+/opencode-commands/
+
