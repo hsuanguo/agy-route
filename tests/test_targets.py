@@ -18,10 +18,12 @@ def test_target_registry():
 
 
 def test_claude_target_install_and_uninstall(tmp_path):
+    import json
+
     target = ClaudeTarget(home=tmp_path)
     assert target.is_present()
 
-    # Default install: skills + commands (no hook)
+    # Default install: skills + commands + permissions.allow (no hook, no deny)
     res = target.install_target()
     assert res.skill_installed is True
     assert res.hook_installed is False
@@ -30,15 +32,22 @@ def test_claude_target_install_and_uninstall(tmp_path):
     assert (tmp_path / ".claude" / "skills" / "agy-research" / "SKILL.md").is_file()
     assert (tmp_path / ".claude" / "commands" / "agy-web-search.md").is_file()
     assert (tmp_path / ".claude" / "commands" / "agy-research.md").is_file()
-    assert not (tmp_path / ".claude" / "settings.json").exists()
+    assert (tmp_path / ".claude" / "settings.json").is_file()
+    settings_default = json.loads((tmp_path / ".claude" / "settings.json").read_text())
+    assert "Bash(agy-route search *)" in settings_default.get("permissions", {}).get("allow", [])
+    assert "WebSearch" not in settings_default.get("permissions", {}).get("deny", [])
 
-    # Install with hook
+    # Install with hook (installs hook + permissions.allow, omits deny WebSearch)
     res_hook = target.install_target(with_hook=True)
     assert res_hook.hook_installed is True
-    assert (tmp_path / ".claude" / "settings.json").is_file()
-    import json
-    settings_data = json.loads((tmp_path / ".claude" / "settings.json").read_text())
-    assert "WebSearch" in settings_data.get("permissions", {}).get("deny", [])
+    settings_hook = json.loads((tmp_path / ".claude" / "settings.json").read_text())
+    assert len(settings_hook.get("hooks", {}).get("PreToolUse", [])) == 1
+    assert "WebSearch" not in settings_hook.get("permissions", {}).get("deny", [])
+
+    # Install with disable_websearch flag (adds WebSearch to permissions.deny)
+    target.install_target(disable_websearch=True)
+    settings_disable = json.loads((tmp_path / ".claude" / "settings.json").read_text())
+    assert "WebSearch" in settings_disable.get("permissions", {}).get("deny", [])
 
     # Uninstall
     unres = target.uninstall_target()
@@ -47,6 +56,7 @@ def test_claude_target_install_and_uninstall(tmp_path):
     assert len(unres.commands_removed) == 2
     after_unres_data = json.loads((tmp_path / ".claude" / "settings.json").read_text())
     assert "WebSearch" not in after_unres_data.get("permissions", {}).get("deny", [])
+    assert "Bash(agy-route search *)" not in after_unres_data.get("permissions", {}).get("allow", [])
 
     # Uninstall again (idempotency check)
     unres_2 = target.uninstall_target()

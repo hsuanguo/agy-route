@@ -35,10 +35,11 @@ uv tool install git+https://github.com/hsuanguo/agy-route
 agy-route install --target claude        # target agent: claude (default) or opencode
 
 # Optional flags:
-#   agy-route install --with-hook        # also install PreToolUse hook (Claude) / JS plugin (opencode)
-#   agy-route install --only-skill       # install SKILL.md files only
-#   agy-route install --only-hook        # install hook / JS plugin only
-#   agy-route install --dry-run          # preview changes without writing files
+#   agy-route install --with-hook           # also install PreToolUse hook (Claude) / JS plugin (opencode)
+#   agy-route install --disable-websearch   # hard-deny native WebSearch tool in permissions
+#   agy-route install --only-skill          # install SKILL.md files only
+#   agy-route install --only-hook           # install hook / JS plugin only
+#   agy-route install --dry-run             # preview changes without writing files
 ```
 
 ### Option 2: Claude Code Marketplace Install
@@ -55,8 +56,9 @@ uv tool install git+https://github.com/hsuanguo/agy-route
 # 3. Install skills and slash commands (/agy-web-search, /agy-research):
 /plugin install agy-route
 
-# Optional: Also install the PreToolUse hook to automatically intercept standard WebSearch tool calls:
-/plugin install agy-route-hook
+# Optional add-ons:
+/plugin install agy-route-hook                # PreToolUse hook to intercept WebSearch
+/plugin install agy-route-disable-websearch    # Hard-deny native WebSearch in permissions
 ```
 
 > **Note:** You can switch between installation paths at any time — `agy-route uninstall` reverses Option 1, and `/plugin uninstall agy-route` (or `/plugin uninstall agy-route-hook`) reverses Option 2. The two paths do not conflict and are idempotent.

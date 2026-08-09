@@ -17,6 +17,7 @@ def test_marketplace_json_validity():
     plugin_names = [p.get("name") for p in data["plugins"]]
     assert "agy-route" in plugin_names
     assert "agy-route-hook" in plugin_names
+    assert "agy-route-disable-websearch" in plugin_names
 
     for plugin in data["plugins"]:
         source = plugin.get("source")
@@ -56,7 +57,7 @@ def test_base_plugin_manifest():
 
 
 def test_hook_plugin_manifest():
-    """Verify /plugin install agy-route-hook manifest configures the PreToolUse hook."""
+    """Verify /plugin install agy-route-hook manifest configures the PreToolUse hook and allow permissions."""
     hook_path = REPO_ROOT / "plugins" / "claude" / "marketplace" / "hook" / "plugin.json"
     assert hook_path.is_file()
     data = json.loads(hook_path.read_text())
@@ -66,11 +67,25 @@ def test_hook_plugin_manifest():
     assert isinstance(data["hooks"], dict)
 
     assert "permissions" in data
-    assert "deny" in data["permissions"]
-    assert "WebSearch" in data["permissions"]["deny"]
+    assert "allow" in data["permissions"]
+    assert "Bash(agy-route search *)" in data["permissions"]["allow"]
 
     hooks_obj = data["hooks"]
     assert "PreToolUse" in hooks_obj
     matcher_entries = hooks_obj["PreToolUse"]
     matchers = [entry.get("matcher") for entry in matcher_entries if isinstance(entry, dict)]
     assert "WebSearch" in matchers
+
+
+def test_disable_websearch_plugin_manifest():
+    """Verify /plugin install agy-route-disable-websearch manifest configures WebSearch in permissions.deny."""
+    path = REPO_ROOT / "plugins" / "claude" / "marketplace" / "disable-websearch" / "plugin.json"
+    assert path.is_file()
+    data = json.loads(path.read_text())
+
+    assert data.get("name") == "agy-route-disable-websearch"
+    assert "permissions" in data
+    assert "allow" in data["permissions"]
+    assert "Bash(agy-route search *)" in data["permissions"]["allow"]
+    assert "deny" in data["permissions"]
+    assert "WebSearch" in data["permissions"]["deny"]

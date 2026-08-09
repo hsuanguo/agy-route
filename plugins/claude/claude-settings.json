@@ -3,9 +3,6 @@
     "allow": [
       "Bash(agy-route search *)",
       "Bash(agy-route research *)"
-    ],
-    "deny": [
-      "WebSearch"
     ]
   },
   "hooks": {

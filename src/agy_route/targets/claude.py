@@ -83,6 +83,7 @@ class ClaudeTarget(Target):
         with_hook: bool = False,
         skill_only: bool = False,
         hook_only: bool = False,
+        disable_websearch: bool = False,
         dry_run: bool = False,
         skills: tuple[str, ...] = ("agy-web-search", "agy-research"),
         namespace: str = "agy-route",
@@ -128,36 +129,31 @@ class ClaudeTarget(Target):
                         dst_cmd.write_text(content)
                 commands_installed.append(str(dst_cmd))
 
-        if install_hook:
-            settings_text = read_package_resource("plugins", "claude", "claude-settings.json")
-            settings = json.loads(settings_text)
-            hook_installed = True
-            if not dry_run:
-                self.config_dir.mkdir(parents=True, exist_ok=True)
-                current = _read_json(self.hook_config_path)
+        if not dry_run:
+            self.config_dir.mkdir(parents=True, exist_ok=True)
+            current = _read_json(self.hook_config_path)
+            settings_changed = False
 
-                # Merge the `permissions.allow` block. Namespace each entry
-                # so re-runs are idempotent and uninstall can clean them up.
-                if "permissions" in settings or "permissions" in settings.get("permissions", {}):
-                    pass
-                new_allow = settings.get("permissions", {}).get("allow", [])
-                if new_allow:
-                    current_perms = current.setdefault("permissions", {})
-                    existing_allow = current_perms.setdefault("allow", [])
-                    for entry in new_allow:
-                        if entry not in existing_allow:
-                            existing_allow.append(entry)
+            # Always merge permissions.allow for agy-route bash commands
+            current_perms = current.setdefault("permissions", {})
+            existing_allow = current_perms.setdefault("allow", [])
+            for allow_entry in ["Bash(agy-route search *)", "Bash(agy-route research *)"]:
+                if allow_entry not in existing_allow:
+                    existing_allow.append(allow_entry)
+                    settings_changed = True
 
-                new_deny = settings.get("permissions", {}).get("deny", [])
-                if new_deny:
-                    current_perms = current.setdefault("permissions", {})
-                    existing_deny = current_perms.setdefault("deny", [])
-                    for entry in new_deny:
-                        if entry not in existing_deny:
-                            existing_deny.append(entry)
+            # Merge permissions.deny if disable_websearch is requested
+            if disable_websearch:
+                existing_deny = current_perms.setdefault("deny", [])
+                if "WebSearch" not in existing_deny:
+                    existing_deny.append("WebSearch")
+                    settings_changed = True
 
-                # Merge the `hooks.PreToolUse` block. Replace-only our entries,
-                # preserve any unrelated hooks the user already has.
+            if install_hook:
+                settings_text = read_package_resource("plugins", "claude", "claude-settings.json")
+                settings = json.loads(settings_text)
+                hook_installed = True
+
                 new_entries = []
                 for raw in settings.get("hooks", {}).get("PreToolUse", []):
                     entry = json.loads(json.dumps(raw))
@@ -173,7 +169,9 @@ class ClaudeTarget(Target):
                 for i in reversed(self._our_entries(existing_pretooluse, namespace)):
                     del existing_pretooluse[i]
                 existing_pretooluse.extend(new_entries)
+                settings_changed = True
 
+            if settings_changed:
                 _backup(self.hook_config_path)
                 _write_json(self.hook_config_path, current)
                 hook_changed = True

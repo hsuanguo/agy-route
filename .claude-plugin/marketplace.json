@@ -19,6 +19,13 @@
       "source": "./plugins/claude/marketplace/hook",
       "category": "search",
       "keywords": ["agy", "antigravity", "gemini", "web-search", "hook", "pretooluse"]
+    },
+    {
+      "name": "agy-route-disable-websearch",
+      "description": "Hard-deny native WebSearch tool in permissions so all web searches go through agy-route skills / slash commands.",
+      "source": "./plugins/claude/marketplace/disable-websearch",
+      "category": "search",
+      "keywords": ["agy", "antigravity", "gemini", "web-search", "deny-websearch"]
     }
   ]
 }

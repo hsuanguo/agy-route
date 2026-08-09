@@ -29,6 +29,7 @@ class OpenCodeTarget(Target):
         with_hook: bool = False,
         skill_only: bool = False,
         hook_only: bool = False,
+        disable_websearch: bool = False,
         dry_run: bool = False,
         skills: tuple[str, ...] = ("agy-web-search", "agy-research"),
         namespace: str = "agy-route",
