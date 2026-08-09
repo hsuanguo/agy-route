@@ -1,105 +1,82 @@
-# agy-route
+# Antigravity Route
 
-<p align="left">
+<p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo.svg">
-    <img alt="agy-route" src="assets/logo.svg" width="320">
+    <img alt="agy-route" src="assets/logo.svg" width="480">
   </picture>
 </p>
 
-A Claude Code **and** opencode plugin (and CLI) that routes work through the
-**`agy` CLI** (Google Antigravity CLI — Gemini under the hood). Ships two
-surfaces today:
+A Claude Code **and** opencode plugin (and CLI) that routes work through the **`agy` CLI** (Google Antigravity CLI — Gemini under the hood). Ships two surfaces today:
 
-- **`agy-web-search`** — single-shot grounded web search. A `PreToolUse` hook
-  (Claude Code) or JS plugin (opencode) intercepts the agent's `websearch`
-  tool calls and reroutes them to `agy-route search`, which uses agy's
-  `search_web` with real source citations.
-- **`agy-research`** — multi-source deep research. Claude plans,
-  fans out sub-questions via `agy-route research fetch`, verifies each
-  load-bearing claim by URL-quote via `agy-route research quote`, then
-  synthesizes a cited report. Run with `/agy-research <topic>`.
+- **`agy-web-search`** — single-shot grounded web search. A `PreToolUse` hook (Claude Code) or JS plugin (opencode) intercepts the agent's `websearch` tool calls and reroutes them to `agy-route search`, which uses agy's `search_web` with real source citations.
+- **`agy-research`** — multi-source deep research. Claude plans, fans out sub-questions via `agy-route research fetch`, verifies each load-bearing claim by URL-quote via `agy-route research quote`, then synthesizes a cited report. Run with `/agy-research <topic>`.
 
-Both surfaces use the same `agy-route` binary (`uv tool install`), the
-same search-only tool policy (no file writes, no shell — `search_web` +
-`read_url` only), and the same exit-code conventions. `agy-route install`
-is target-aware: it drops skills + hooks + commands into whichever agent
-you pick (`claude` or `opencode`).
+Both surfaces use the same `agy-route` binary (`uv tool install`), the same search-only tool policy (no file writes, no shell — `search_web` + `read_url` only), and the same exit-code conventions. `agy-route install` is target-aware: it drops skills + hooks + commands into whichever agent you pick (`claude` or `opencode`).
 
-This is the first plugin in the [`agy-route`](.) repo. Future plugins
-(review, code, …) become subcommands of the same `agy-route` binary.
-
-> **You don't need to install the Claude Code marketplace.**
-> The repo ships a `.claude-plugin/marketplace.json` so anyone who *wants*
-> the marketplace path can `/plugin marketplace add
-> https://github.com/hsuanguo/agy-route`, but it's **opt-in**. The
-> recommended install is the **lite path** below — `uv tool install` +
-> `agy-route install --target <claude|opencode>`. Pick the marketplace
-> path only if you want the `/agy-web-search` and `/agy-research` slash
-> commands registered as Claude Code pluglets, versioned
-> `/plugin update`, or to appear in `/plugin marketplace browse`.
+This is the first plugin in the [`agy-route`](.) repo. Future plugins (review, code, …) become subcommands of the same `agy-route` binary.
 
 ## Install
 
-### Recommended: lite install (no marketplace)
+Choose one of two installation methods depending on your workflow:
 
-Two commands. The plugin's `PreToolUse` hook + the SKILL.md get dropped into
-`~/.claude/` directly. No marketplace, no plugin registry, no registry
-updates — just files.
+### Option 1: Direct CLI Install (Recommended)
+
+Quick, lightweight setup. Drops skills, slash commands, and hooks directly into your target agent's configuration directory (`~/.claude/` or `~/.config/opencode/`). No marketplace registry needed.
 
 ```bash
-# 1. Install the agy CLI and authenticate:
-#    https://antigravity.google/docs/cli-using
+# 1. Install the agy CLI and authenticate (https://antigravity.google/docs/cli-using):
 agy models                       # should list Gemini Flash / Pro entries
 
-# 2. Install `agy-route` as a uv tool (puts `agy-route` and
-#    `agy-route-hook-pretooluse` on $PATH under ~/.local/bin):
+# 2. Install `agy-route` as a uv tool:
 uv tool install git+https://github.com/hsuanguo/agy-route
 
 # 3. Drop skills and slash commands into target agent:
-agy-route install                # skills + slash commands (default)
+agy-route install --target claude        # target agent: claude (default) or opencode
+
 # Optional flags:
-#   agy-route install --with-hook   # also install PreToolUse hook (Claude) / JS plugin (opencode)
-#   agy-route install --only-skill  # just the SKILL.md files
-#   agy-route install --only-hook   # just the hook/plugin
-#   agy-route install --dry-run     # show what would change, no filesystem writes
-#   agy-route install --target <name>  # target agent (claude, opencode)
+#   agy-route install --with-hook        # also install PreToolUse hook (Claude) / JS plugin (opencode)
+#   agy-route install --only-skill       # install SKILL.md files only
+#   agy-route install --only-hook        # install hook / JS plugin only
+#   agy-route install --dry-run          # preview changes without writing files
 ```
 
-That's it. Verify with:
+### Option 2: Claude Code Marketplace Install
+
+Use this path if you prefer managing plugins via Claude Code's native `/plugin` system (provides versioned `/plugin update` and `/plugin marketplace browse`).
+
+```bash
+# 1. Install `agy-route` as a uv tool:
+uv tool install git+https://github.com/hsuanguo/agy-route
+
+# 2. Add the marketplace registry inside Claude Code:
+/plugin marketplace add https://github.com/hsuanguo/agy-route
+
+# 3. Install skills and slash commands (/agy-web-search, /agy-research):
+/plugin install agy-route
+
+# Optional: Also install the PreToolUse hook to automatically intercept standard WebSearch tool calls:
+/plugin install agy-route-hook
+```
+
+> **Note:** You can switch between installation paths at any time — `agy-route uninstall` reverses Option 1, and `/plugin uninstall agy-route` (or `/plugin uninstall agy-route-hook`) reverses Option 2. The two paths do not conflict and are idempotent.
+
+### Verification
+
+Verify with:
 
 ```bash
 agy-route types
 agy-route search "latest Antigravity CLI release"
 ```
 
-The hook is wired automatically. You can confirm by asking Claude a question
-that would normally trigger a web search; the response will cite Gemini-grounded
-URLs.
-
-### Optional: plugin marketplace path
-
-Use this only if you want the `/agy-web-search` slash command, versioned
-`/plugin update`, or marketplace browsability. Adds a `/plugin marketplace
-add` + `/plugin install` step but gives you those features.
-
-```bash
-uv tool install git+https://github.com/hsuanguo/agy-route
-/plugin marketplace add https://github.com/hsuanguo/agy-route
-/plugin install agy-route
-```
-
-You can switch between paths any time — `agy-route uninstall` reverses the
-lite install, `/plugin uninstall agy-route` reverses the marketplace one.
-The two paths don't conflict; if you install both, the second is a no-op
-(idempotent).
+The hook is wired automatically. You can confirm by asking Claude a question that would normally trigger a web search; the response will cite Gemini-grounded URLs.
 
 ## Usage
 
 ### From Claude Code
 
-Once the plugin is enabled, **every `WebSearch` is automatically routed through
-`agy-route search`** by the hook. To force an explicit search:
+Once the plugin is enabled, **every `WebSearch` is automatically routed through `agy-route search`** by the hook. To force an explicit search:
 
 ```
 /agy-web-search "Claude API pricing June 2026"
@@ -208,21 +185,9 @@ src/agy_route/
 pyproject.toml                # PEP 621 metadata + 2 console script entries
 ```
 
-## Logo
-
-`assets/logo.svg` is a horizontal lockup in the [act-cli](https://github.com/hsuanguo/act-cli/blob/main/assets/logo.svg)
-style: an icon (input bar → junction → two branches, the "split-route" idea)
-plus a pixel-block wordmark "agy-route". The fill flips black ↔ near-white
-via `prefers-color-scheme`. `assets/icon.svg` is the icon-only version
-(useful for favicons / social cards).
-
-Both files are derived from `tools/generate_logo.py` — tweak the
-`LETTERS` dict in that script and re-run to regenerate.
-
 ## Privacy
 
-`agy-route` sends your prompt to Google's Gemini service. Do **not** pipe
-credentials, API keys, or PII.
+`agy-route` sends your prompt to Google's Gemini service. Do **not** pipe credentials, API keys, or PII.
 
 ## License
 
