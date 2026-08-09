@@ -11,6 +11,7 @@ from agy_route.core.executor import (
     classify_empty,
     emit_json_envelope,
     invoke_agy,
+    is_retryable_error,
 )
 
 
@@ -66,3 +67,14 @@ def test_invoke_agy_passes_model():
         cmd = args[0]
         assert "--model" in cmd
         assert "gemini-2.5-flash" in cmd
+
+
+def test_is_retryable_error():
+    assert is_retryable_error("", "database is locked") is True
+    assert is_retryable_error("", "HTTP 429 Resource Exhausted") is True
+    assert is_retryable_error("", "connection reset by peer") is True
+    assert is_retryable_error("", "") is True  # empty output on parallel concurrency
+
+    # Non-retryable auth / permission errors
+    assert is_retryable_error("", "Unauthenticated credentials expired") is False
+    assert is_retryable_error("", "permission_denied") is False
