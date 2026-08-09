@@ -17,11 +17,12 @@
     "claude-code-plugin"
   ],
   "skills": [
-    "./skills/agy-web-search",
-    "./skills/agy-research"
+    "../../../../skills/agy-web-search",
+    "../../../../skills/agy-research"
   ],
   "commands": [
-    "../plugins/claude/commands/agy-web-search.md",
-    "../plugins/claude/commands/agy-research.md"
-  ]
+    "../../commands/agy-web-search.md",
+    "../../commands/agy-research.md"
+  ],
+  "hooks": "../../claude-permissions.json"
 }

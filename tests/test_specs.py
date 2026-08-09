@@ -57,3 +57,19 @@ def test_prompt_constants():
     formatted = RESEARCH_QUOTE_PROMPT_TEMPLATE.format(url="https://example.com", claim="test claim")
     assert "https://example.com" in formatted
     assert "test claim" in formatted
+
+
+def test_static_claude_commands_in_sync():
+    from pathlib import Path
+    repo_root = Path(__file__).resolve().parent.parent
+    claude_cmds_dir = repo_root / "plugins" / "claude" / "commands"
+    assert claude_cmds_dir.is_dir()
+
+    for spec in COMMAND_SPECS:
+        cmd_file = claude_cmds_dir / f"{spec.name}.md"
+        assert cmd_file.is_file(), f"Missing static command file {cmd_file}"
+        assert cmd_file.read_text() == spec.render_claude(), (
+            f"Static command file {cmd_file} is out of sync with COMMAND_SPECS. "
+            "Run 'uv run python tools/generate_commands.py' to update."
+        )
+

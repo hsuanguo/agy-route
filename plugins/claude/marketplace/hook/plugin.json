@@ -1,0 +1,21 @@
+{
+  "name": "agy-route-hook",
+  "version": "0.5.0",
+  "description": "PreToolUse hook for Claude Code to automatically intercept standard WebSearch tool calls and reroute them to agy-route.",
+  "author": {
+    "name": "agy-route contributors",
+    "url": "https://github.com/hsuanguo/agy-route"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/hsuanguo/agy-route",
+  "keywords": [
+    "agy",
+    "antigravity",
+    "gemini",
+    "web-search",
+    "hook",
+    "pretooluse",
+    "claude-code-plugin"
+  ],
+  "hooks": "../../claude-settings.json"
+}
