@@ -148,6 +148,14 @@ class ClaudeTarget(Target):
                         if entry not in existing_allow:
                             existing_allow.append(entry)
 
+                new_deny = settings.get("permissions", {}).get("deny", [])
+                if new_deny:
+                    current_perms = current.setdefault("permissions", {})
+                    existing_deny = current_perms.setdefault("deny", [])
+                    for entry in new_deny:
+                        if entry not in existing_deny:
+                            existing_deny.append(entry)
+
                 # Merge the `hooks.PreToolUse` block. Replace-only our entries,
                 # preserve any unrelated hooks the user already has.
                 new_entries = []
@@ -225,6 +233,13 @@ class ClaudeTarget(Target):
                 if new_allow != allow:
                     current.setdefault("permissions", {})["allow"] = new_allow
                     changed = True
+
+            # Strip our permissions.deny WebSearch entry.
+            deny = current.get("permissions", {}).get("deny", [])
+            if isinstance(deny, list) and "WebSearch" in deny:
+                new_deny = [e for e in deny if e != "WebSearch"]
+                current.setdefault("permissions", {})["deny"] = new_deny
+                changed = True
 
             # Strip our hooks.PreToolUse entries (matched by _meta.agy_route).
             hooks = current.get("hooks") or {}

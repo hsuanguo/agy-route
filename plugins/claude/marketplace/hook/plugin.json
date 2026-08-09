@@ -17,6 +17,11 @@
     "pretooluse",
     "claude-code-plugin"
   ],
+  "permissions": {
+    "deny": [
+      "WebSearch"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {

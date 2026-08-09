@@ -36,12 +36,17 @@ def test_claude_target_install_and_uninstall(tmp_path):
     res_hook = target.install_target(with_hook=True)
     assert res_hook.hook_installed is True
     assert (tmp_path / ".claude" / "settings.json").is_file()
+    import json
+    settings_data = json.loads((tmp_path / ".claude" / "settings.json").read_text())
+    assert "WebSearch" in settings_data.get("permissions", {}).get("deny", [])
 
     # Uninstall
     unres = target.uninstall_target()
     assert len(unres.skills_removed) == 2
     assert unres.hook_removed is True
     assert len(unres.commands_removed) == 2
+    after_unres_data = json.loads((tmp_path / ".claude" / "settings.json").read_text())
+    assert "WebSearch" not in after_unres_data.get("permissions", {}).get("deny", [])
 
     # Uninstall again (idempotency check)
     unres_2 = target.uninstall_target()

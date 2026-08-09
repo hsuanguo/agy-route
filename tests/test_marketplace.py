@@ -65,6 +65,10 @@ def test_hook_plugin_manifest():
     assert "hooks" in data
     assert isinstance(data["hooks"], dict)
 
+    assert "permissions" in data
+    assert "deny" in data["permissions"]
+    assert "WebSearch" in data["permissions"]["deny"]
+
     hooks_obj = data["hooks"]
     assert "PreToolUse" in hooks_obj
     matcher_entries = hooks_obj["PreToolUse"]
