@@ -31,7 +31,7 @@ uv tool install git+https://github.com/hsuanguo/agy-route
 agy-route install --target claude        # target agent: claude (default) or opencode
 
 # Optional flags:
-#   agy-route install --disable-websearch   # hard-deny native WebSearch tool in permissions to prioritize agy-web-search
+#   agy-route install --disable-websearch   # hard-deny native WebSearch tool(Claude only)
 #   agy-route install --with-hook           # also install PreToolUse hook (Claude) / JS plugin (opencode)
 #   agy-route install --only-skill          # install SKILL.md files only
 #   agy-route install --only-hook           # install hook / JS plugin only

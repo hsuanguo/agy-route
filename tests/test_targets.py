@@ -66,10 +66,12 @@ def test_claude_target_install_and_uninstall(tmp_path):
 
 
 def test_opencode_target_install_and_uninstall(tmp_path):
+    import json
+
     target = OpenCodeTarget(home=tmp_path)
     assert target.is_present()
 
-    # Default install: skills + commands (no plugin)
+    # Default install: skills + commands + permissions (no plugin)
     res = target.install_target()
     assert res.skill_installed is True
     assert res.plugin_installed is False
@@ -77,6 +79,12 @@ def test_opencode_target_install_and_uninstall(tmp_path):
     assert (tmp_path / ".claude" / "skills" / "agy-web-search" / "SKILL.md").is_file()
     assert (tmp_path / ".config" / "opencode" / "commands" / "agy-web-search.md").is_file()
     assert not (tmp_path / ".config" / "opencode" / "plugins" / "agy-route.js").exists()
+
+    config_path = tmp_path / ".config" / "opencode" / "opencode.json"
+    assert config_path.is_file()
+    config_data = json.loads(config_path.read_text())
+    assert config_data.get("permission", {}).get("bash", {}).get("agy-route search *") == "allow"
+    assert config_data.get("permission", {}).get("bash", {}).get("agy-route research *") == "allow"
 
     # Install with plugin
     res_plugin = target.install_target(with_hook=True)
@@ -88,6 +96,10 @@ def test_opencode_target_install_and_uninstall(tmp_path):
     assert len(unres.skills_removed) == 2
     assert unres.plugin_removed is True
     assert len(unres.commands_removed) == 2
+
+    after_unres_config = json.loads(config_path.read_text())
+    assert "agy-route search *" not in after_unres_config.get("permission", {}).get("bash", {})
+    assert "agy-route research *" not in after_unres_config.get("permission", {}).get("bash", {})
 
 
 def test_claude_target_preserves_existing_settings(tmp_path):
