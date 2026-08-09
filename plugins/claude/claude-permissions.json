@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(agy-route search *)",
+      "Bash(agy-route research *)"
+    ]
+  }
+}

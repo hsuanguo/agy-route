@@ -42,7 +42,6 @@ packages = ["src/agy_route"]
 "skills"                                                            = "agy_route/skills"
 "plugins"                                                           = "agy_route/plugins"
 "config"                                                            = "agy_route/config"
-".claude-plugin"                                                    = "agy_route/claude_plugin"
 "README.md"                                                         = "agy_route/README.md"
 "CHANGELOG.md"                                                      = "agy_route/CHANGELOG.md"
 "LICENSE"                                                           = "agy_route/LICENSE"

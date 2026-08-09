@@ -1,7 +1,6 @@
 ---
 name: agy-web-search
 description: "Perform a grounded web search via the agy CLI (Gemini). Trigger when: (1) user explicitly asks for agy-web-search, (2) user mentions Gemini or Antigravity search, (3) a second search opinion from Google is needed, or (4) built-in search fails or returns insufficient results."
-user-invocable: false
 ---
 
 # AGY Web Search

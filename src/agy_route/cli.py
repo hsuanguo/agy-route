@@ -109,6 +109,11 @@ def install_cmd(
         "--only-plugin",
         help="Install only the PreToolUse hook (Claude) or JS plugin (opencode).",
     ),
+    disable_websearch: bool = typer.Option(
+        False,
+        "--disable-websearch",
+        help="Hard-deny native WebSearch tool in permissions so all web searches go through skills / slash commands.",
+    ),
     dry_run: bool = typer.Option(
         False,
         "--dry-run",
@@ -129,6 +134,7 @@ def install_cmd(
             with_hook=with_hook,
             skill_only=skill_only,
             hook_only=hook_only,
+            disable_websearch=disable_websearch,
             dry_run=dry_run,
         )
     except KeyError as e:
